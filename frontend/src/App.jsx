@@ -6,7 +6,8 @@ import Toast from './components/Toast'
 import ConfirmModal from './components/ConfirmModal'
 import PriceHistoryModal from './components/PriceHistoryModal'
 
-const API_URL = import.meta.env.VITE_API_URL || ''
+// API URL - pode ser customizado via variável de ambiente
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080'
 
 // Theme Context
 const ThemeContext = createContext()
@@ -64,16 +65,44 @@ function App() {
     setToasts(prev => prev.filter(t => t.id !== id))
   }, [])
 
-  // Fetch products
-  const fetchProducts = async () => {
+  // Fetch products com retry logic
+  const fetchProducts = async (retries = 3) => {
     try {
-      const response = await fetch(`${API_URL}/api/products`)
-      if (!response.ok) throw new Error('Erro ao buscar produtos')
+      console.log(`[INFO] Fetching products from: ${API_URL}/api/products`)
+      
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 15000) // 15s timeout
+      
+      const response = await fetch(`${API_URL}/api/products`, {
+        signal: controller.signal,
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      })
+      
+      clearTimeout(timeoutId)
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+      
       const data = await response.json()
-      setProducts(data)
+      setProducts(Array.isArray(data) ? data : [])
+      console.log(`[SUCCESS] Fetched ${data.length} products`)
     } catch (error) {
-      console.error('Erro ao buscar produtos:', error)
-      addToast('Erro ao carregar produtos', 'error')
+      console.error('[ERROR] Erro ao buscar produtos:', error.message)
+      
+      // Retry logic
+      if (retries > 0 && (error.name === 'AbortError' || error.message.includes('Failed to fetch'))) {
+        console.log(`[RETRY] Tentando novamente... (${3 - retries + 1}/3)`)
+        setTimeout(() => fetchProducts(retries - 1), 1000)
+        return
+      }
+      
+      addToast(
+        'Erro ao carregar produtos. Verifique se o Backend está rodando em ' + API_URL,
+        'error'
+      )
     } finally {
       setLoading(false)
     }
@@ -83,26 +112,63 @@ function App() {
     fetchProducts()
   }, [])
 
-  // Add product
+  // Add product com melhor validação
   const addProduct = async (url) => {
+    // Validação client-side
+    try {
+      new URL(url)
+    } catch {
+      addToast('URL inválida. Use um endereço completo (https://...)', 'error')
+      return { success: false }
+    }
+
     setAdding(true)
     try {
+      console.log(`[INFO] Adding product from URL: ${url}`)
+      
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 30000) // 30s timeout para scraping
+      
       const response = await fetch(`${API_URL}/api/products`, {
         method: 'POST',
+        signal: controller.signal,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url })
       })
+      
+      clearTimeout(timeoutId)
+      
+      const responseData = await response.json()
+      
       if (response.ok) {
-        const newProduct = await response.json()
-        addToast(`"${newProduct.name}" adicionado com sucesso!`, 'success')
+        console.log(`[SUCCESS] Product added: ${responseData.name}`)
+        addToast(`✅ "${responseData.name}" adicionado com sucesso!`, 'success')
         fetchProducts()
         return { success: true }
       } else {
-        throw new Error('Erro ao adicionar')
+        const errorMsg = responseData.error || 'Erro desconhecido'
+        const details = responseData.details || ''
+        console.error(`[ERROR] ${errorMsg} - ${details}`)
+        
+        if (errorMsg.includes('scraper')) {
+          addToast('❌ Scraper Python não está rodando. Inicie em outro terminal com: python main.py', 'error')
+        } else if (errorMsg.includes('valid')) {
+          addToast('❌ URL inválida ou produto não encontrado no Mercado Livre', 'error')
+        } else {
+          addToast(`❌ ${errorMsg}`, 'error')
+        }
+        return { success: false }
       }
     } catch (error) {
-      console.error('Erro ao adicionar produto:', error)
-      addToast('Erro ao adicionar produto. Verifique a URL.', 'error')
+      console.error('[ERROR] Exception ao adicionar produto:', error)
+      
+      if (error.name === 'AbortError') {
+        addToast('❌ Timeout ao scraper. URL muito lenta ou scraper não responde.', 'error')
+      } else if (error.message.includes('Failed to fetch')) {
+        addToast(`❌ Não conseguiu conectar ao Backend em ${API_URL}`, 'error')
+      } else {
+        addToast('❌ Erro ao adicionar produto. Tente novamente.', 'error')
+      }
       return { success: false }
     } finally {
       setAdding(false)
@@ -117,12 +183,23 @@ function App() {
   const confirmDelete = async () => {
     const { productId, productName } = confirmModal
     try {
-      await fetch(`${API_URL}/api/products/${productId}`, { method: 'DELETE' })
-      addToast(`"${productName}" removido`, 'success')
+      console.log(`[INFO] Deleting product: ${productId}`)
+      
+      const response = await fetch(`${API_URL}/api/products/${productId}`, { 
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' }
+      })
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`)
+      }
+      
+      console.log(`[SUCCESS] Product deleted: ${productName}`)
+      addToast(`✅ "${productName}" removido com sucesso`, 'success')
       fetchProducts()
     } catch (error) {
-      console.error('Erro ao deletar produto:', error)
-      addToast('Erro ao remover produto', 'error')
+      console.error('[ERROR] Erro ao deletar produto:', error)
+      addToast('❌ Erro ao remover produto', 'error')
     } finally {
       setConfirmModal({ open: false, productId: null, productName: '' })
     }
@@ -132,15 +209,28 @@ function App() {
   const refreshPrices = async () => {
     setRefreshing(true)
     try {
-      await fetch(`${API_URL}/api/products/refresh`, { method: 'POST' })
-      addToast('Preços atualizados!', 'success')
+      console.log(`[INFO] Refreshing prices manually`)
+      
+      const response = await fetch(`${API_URL}/api/products/refresh`, { 
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      })
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`)
+      }
+      
+      addToast('🔄 Preços sendo atualizados...', 'info')
+      console.log('[SUCCESS] Price refresh triggered')
+      
+      // Espera um pouco e recarrega
       setTimeout(() => {
         fetchProducts()
         setRefreshing(false)
-      }, 3000)
+      }, 2000)
     } catch (error) {
-      console.error('Erro ao atualizar preços:', error)
-      addToast('Erro ao atualizar preços', 'error')
+      console.error('[ERROR] Erro ao atualizar preços:', error)
+      addToast('❌ Erro ao atualizar preços', 'error')
       setRefreshing(false)
     }
   }

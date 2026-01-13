@@ -4,6 +4,7 @@ import com.mercadolivre.pricemonitor.dto.ScrapeRequest;
 import com.mercadolivre.pricemonitor.dto.ScrapeResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClientException;
@@ -16,7 +17,7 @@ import java.time.Duration;
  * 
  * Handles:
  * - HTTP POST requests to the scraper
- * - Timeout handling
+ * - Timeout handling (60 seconds)
  * - Error logging (does not throw exceptions)
  */
 @Service
@@ -26,9 +27,16 @@ public class ScraperService {
     private final RestTemplate restTemplate;
     private final String scraperApiUrl;
 
-    public ScraperService(@Value("${scraper.api.url}") String scraperApiUrl) {
+    public ScraperService(
+            @Value("${scraper.api.url}") String scraperApiUrl,
+            RestTemplateBuilder restTemplateBuilder) {
         this.scraperApiUrl = scraperApiUrl;
-        this.restTemplate = new RestTemplate();
+        // Configure RestTemplate with timeouts
+        this.restTemplate = restTemplateBuilder
+                .setConnectTimeout(Duration.ofSeconds(10))
+                .setReadTimeout(Duration.ofSeconds(60))
+                .build();
+        log.info("ScraperService initialized with URL: {}", scraperApiUrl);
     }
 
     /**
@@ -40,7 +48,7 @@ public class ScraperService {
     public ScrapeResponse fetchProductData(String productUrl) {
         String endpoint = scraperApiUrl + "/scrape";
         
-        log.debug("Calling scraper API for URL: {}", productUrl);
+        log.debug("Calling scraper API: {} | Product URL: {}", endpoint, productUrl);
         
         try {
             // Prepare request headers
@@ -51,31 +59,36 @@ public class ScraperService {
             ScrapeRequest request = new ScrapeRequest(productUrl);
             HttpEntity<ScrapeRequest> entity = new HttpEntity<>(request, headers);
             
-            // Make POST request with timeout handling
+            // Make POST request
+            long startTime = System.currentTimeMillis();
             ResponseEntity<ScrapeResponse> response = restTemplate.exchange(
                 endpoint,
                 HttpMethod.POST,
                 entity,
                 ScrapeResponse.class
             );
+            long duration = System.currentTimeMillis() - startTime;
             
             // Check if response is successful
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                 ScrapeResponse result = response.getBody();
-                log.debug("Scraper returned: title='{}', price={}", result.getTitle(), result.getPrice());
+                log.info("✅ Scraper success: title='{}' | price=R${} | duration={}ms", 
+                        result.getTitle(), result.getPrice(), duration);
                 return result;
             } else {
-                log.warn("Scraper returned non-success status: {}", response.getStatusCode());
+                log.warn("❌ Scraper returned non-success status: {}", response.getStatusCode());
                 return null;
             }
             
+        } catch (org.springframework.web.client.ResourceAccessException e) {
+            log.error("❌ SCRAPER CONNECTION ERROR - Is Python scraper running on {}? Error: {}", 
+                    scraperApiUrl, e.getMessage());
+            return null;
         } catch (RestClientException e) {
-            // Handle HTTP errors, timeouts, connection refused, etc.
-            log.error("Failed to call scraper API for URL '{}': {}", productUrl, e.getMessage());
+            log.error("❌ Scraper API error for URL '{}': {}", productUrl, e.getMessage());
             return null;
         } catch (Exception e) {
-            // Catch any unexpected errors
-            log.error("Unexpected error while calling scraper API: {}", e.getMessage(), e);
+            log.error("❌ Unexpected error while calling scraper API", e);
             return null;
         }
     }
@@ -88,9 +101,15 @@ public class ScraperService {
     public boolean isScraperAvailable() {
         try {
             ResponseEntity<String> response = restTemplate.getForEntity(scraperApiUrl, String.class);
-            return response.getStatusCode().is2xxSuccessful();
+            boolean available = response.getStatusCode().is2xxSuccessful();
+            if (available) {
+                log.info("✅ Scraper API is available");
+            } else {
+                log.warn("⚠️ Scraper API returned status: {}", response.getStatusCode());
+            }
+            return available;
         } catch (Exception e) {
-            log.warn("Scraper API is not available: {}", e.getMessage());
+            log.error("❌ Scraper API is NOT available at {}: {}", scraperApiUrl, e.getMessage());
             return false;
         }
     }

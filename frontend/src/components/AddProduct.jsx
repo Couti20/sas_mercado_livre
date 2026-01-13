@@ -6,16 +6,32 @@ function AddProduct({ onAdd, adding }) {
   const [url, setUrl] = useState('')
   const [error, setError] = useState('')
 
+  const validateUrl = (urlString) => {
+    if (!urlString.trim()) {
+      return 'Cole a URL do produto'
+    }
+
+    // Check if it's a valid URL format
+    try {
+      new URL(urlString)
+    } catch {
+      return 'URL inválida. Use um endereço completo'
+    }
+
+    // Check if it's from Mercado Livre
+    if (!urlString.includes('mercadolivre.com') && !urlString.includes('mercadolibre.com')) {
+      return 'URL deve ser do Mercado Livre (mercadolivre.com.br ou mercadolibre.com)'
+    }
+
+    return ''
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     
-    if (!url.trim()) {
-      setError('Cole a URL do produto')
-      return
-    }
-    
-    if (!url.includes('mercadolivre') && !url.includes('mercadolibre')) {
-      setError('URL deve ser do Mercado Livre')
+    const validationError = validateUrl(url)
+    if (validationError) {
+      setError(validationError)
       return
     }
 
@@ -24,6 +40,20 @@ function AddProduct({ onAdd, adding }) {
     
     if (result.success) {
       setUrl('')
+    }
+  }
+
+  const handleUrlChange = (e) => {
+    setUrl(e.target.value)
+    setError('') // Clear error when user starts typing
+  }
+
+  const handlePaste = async (e) => {
+    const pastedText = e.clipboardData.getData('text')
+    const urlError = validateUrl(pastedText)
+    if (!urlError) {
+      setUrl(pastedText)
+      setError('')
     }
   }
 
@@ -59,24 +89,23 @@ function AddProduct({ onAdd, adding }) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
             </svg>
             <input
-              type="url"
+              type="text"
               value={url}
-              onChange={(e) => {
-                setUrl(e.target.value)
-                setError('')
-              }}
-              placeholder="Cole a URL do produto do Mercado Livre..."
-              className={`w-full pl-12 pr-4 py-3.5 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all duration-200 ${
+              onChange={handleUrlChange}
+              onPaste={handlePaste}
+              placeholder="Cole a URL do produto (ex: https://www.mercadolivre.com.br/...)"
+              disabled={adding}
+              className={`w-full pl-12 pr-4 py-3.5 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
                 darkMode 
                   ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-green-400 focus:ring-green-400/20' 
                   : 'bg-gray-50 border-gray-200 text-gray-800 placeholder-gray-500 focus:border-green-500 focus:ring-green-500/20'
-              } ${error ? 'border-red-500 focus:border-red-500' : ''}`}
+              } ${error ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : ''}`}
             />
           </div>
           <button
             type="submit"
-            disabled={adding}
-            className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-semibold transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-70 disabled:cursor-not-allowed bg-gradient-to-r from-green-500 to-green-600 hover:from-green-400 hover:to-green-500 text-white"
+            disabled={adding || !url.trim()}
+            className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-semibold transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed bg-gradient-to-r from-green-500 to-green-600 hover:from-green-400 hover:to-green-500 text-white active:scale-95"
           >
             {adding ? (
               <>
@@ -98,18 +127,25 @@ function AddProduct({ onAdd, adding }) {
         </div>
         
         {error && (
-          <div className="flex items-center gap-2 mt-3 text-red-500 text-sm">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+          <div className="flex items-start gap-3 mt-3 p-3 rounded-lg bg-red-500/10 border border-red-500/30">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4v.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            {error}
+            <p className={`text-sm ${darkMode ? 'text-red-400' : 'text-red-600'}`}>
+              {error}
+            </p>
           </div>
         )}
+
+        <div className={`mt-3 flex items-start gap-2 text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>
+            ✅ Certifique-se que o Backend está rodando em <strong>http://localhost:8080</strong> e o Scraper Python em <strong>http://localhost:8000</strong>
+          </span>
+        </div>
       </form>
-      
-      <p className={`text-xs mt-3 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-        💡 Cole a URL completa do produto que deseja monitorar. Ex: https://www.mercadolivre.com.br/produto...
-      </p>
     </div>
   )
 }
