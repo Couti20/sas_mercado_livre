@@ -169,7 +169,7 @@ export default function Dashboard() {
   const confirmDelete = async () => {
     const { productId, productName } = confirmModal;
     try {
-      console.log(`[INFO] 🗑️ Deleting product: ${productId}`);
+      console.log(`[INFO] 🗑️ Deleting product: ${productId} | Token: ${token ? 'OK' : 'MISSING'}`);
       
       const response = await fetch(`${API_URL}/api/products/${productId}`, { 
         method: 'DELETE',
@@ -179,16 +179,20 @@ export default function Dashboard() {
         }
       });
       
+      console.log(`[DEBUG] Response status: ${response.status}, OK: ${response.ok}`);
+      
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
+        const errorData = await response.text();
+        console.error(`[ERROR] Server response: ${response.status}`, errorData);
+        throw new Error(`HTTP ${response.status}: ${errorData || 'Erro desconhecido'}`);
       }
       
       console.log(`[SUCCESS] ✅ Product deleted: ${productName}`);
       addToast(`✅ "${productName}" removido com sucesso`, 'success');
       fetchProducts();
     } catch (error) {
-      console.error('[ERROR] ❌ Erro ao deletar produto:', error);
-      addToast('❌ Erro ao remover produto', 'error');
+      console.error('[ERROR] ❌ Erro ao deletar produto:', error.message);
+      addToast(`❌ ${error.message}`, 'error');
     } finally {
       setConfirmModal({ open: false, productId: null, productName: '' });
     }
@@ -270,19 +274,21 @@ export default function Dashboard() {
         searchTerm={searchTerm}
         onSearchChange={setSearchTerm}
       />
-      <main className="container mx-auto px-4 py-8 max-w-7xl">
-        <AddProduct onAdd={addProduct} adding={adding} />
-        <ProductList 
-          products={filteredProducts}
-          totalProducts={products.length}
-          loading={loading} 
-          onDelete={handleDeleteClick}
-          onShowHistory={showPriceHistory}
-          sortBy={sortBy}
-          onSortChange={setSortBy}
-          filterBy={filterBy}
-          onFilterChange={setFilterBy}
-        />
+      <main className="min-h-[calc(100vh-80px)] bg-gradient-to-br from-gray-50 via-indigo-50 to-purple-50">
+        <div className="container mx-auto px-4 py-10 max-w-7xl">
+          <AddProduct onAdd={addProduct} adding={adding} />
+          <ProductList 
+            products={filteredProducts}
+            totalProducts={products.length}
+            loading={loading} 
+            onDelete={handleDeleteClick}
+            onShowHistory={showPriceHistory}
+            sortBy={sortBy}
+            onSortChange={setSortBy}
+            filterBy={filterBy}
+            onFilterChange={setFilterBy}
+          />
+        </div>
       </main>
 
       {/* Toast Container */}

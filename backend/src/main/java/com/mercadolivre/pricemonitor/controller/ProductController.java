@@ -111,16 +111,27 @@ public class ProductController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> removeProduct(@PathVariable Long id) {
         try {
-            if (productService.getProductById(id).isEmpty()) {
+            Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+            
+            var product = productService.getProductById(id);
+            if (product.isEmpty()) {
+                log.warn("❌ Product not found with ID: {}", id);
                 return ResponseEntity.notFound().build();
             }
             
-            log.info("Removing product with ID: {}", id);
+            // Verify product belongs to the authenticated user
+            if (!product.get().getUserId().equals(userId)) {
+                log.warn("❌ Unauthorized: User {} trying to delete product {} from user {}", 
+                    userId, id, product.get().getUserId());
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+            
+            log.info("✅ Removing product with ID: {} for user: {}", id, userId);
             productService.removeProduct(id);
             return ResponseEntity.noContent().build();
             
         } catch (Exception e) {
-            log.error("Error removing product with id: {}", id, e);
+            log.error("❌ Error removing product with id: {}", id, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
