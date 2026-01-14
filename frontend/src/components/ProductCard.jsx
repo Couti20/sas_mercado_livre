@@ -1,9 +1,7 @@
 import { useState } from 'react'
-import ConfirmModal from './ConfirmModal'
 import PriceHistoryModal from './PriceHistoryModal'
 
 export default function ProductCard({ product, onDelete, onShowHistory }) {
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
 
   const priceChange = product.lastPrice 
@@ -37,7 +35,7 @@ export default function ProductCard({ product, onDelete, onShowHistory }) {
               </a>
             </div>
             <button
-              onClick={() => setShowDeleteConfirm(true)}
+              onClick={() => onDelete(product.id, product.name)}
               className="p-2 rounded-lg hover:bg-red-50 transition-all duration-300 flex-shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100 cursor-pointer hover:scale-110 active:scale-95"
               title="Deletar produto"
             >
@@ -101,18 +99,6 @@ export default function ProductCard({ product, onDelete, onShowHistory }) {
       </div>
 
       {/* Modals */}
-      {showDeleteConfirm && (
-        <ConfirmModal
-          title="Deletar Produto?"
-          message={`Tem certeza que deseja deletar "${product.name}"?`}
-          onConfirm={() => {
-            onDelete(product.id, product.name)
-            setShowDeleteConfirm(false)
-          }}
-          onCancel={() => setShowDeleteConfirm(false)}
-        />
-      )}
-
       {showHistory && (
         <PriceHistoryModal
           open={showHistory}

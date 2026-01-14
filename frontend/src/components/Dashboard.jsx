@@ -168,6 +168,15 @@ export default function Dashboard() {
 
   const confirmDelete = async () => {
     const { productId, productName } = confirmModal;
+    console.log(`[DEBUG] confirmDelete called with:`, { productId, productName, confirmModal });
+    console.log(`[DEBUG] Token present:`, !!token);
+    console.log(`[DEBUG] API_URL:`, API_URL);
+    
+    if (!productId) {
+      console.warn('[WARN] ProductId is missing!');
+      return;
+    }
+
     try {
       console.log(`[INFO] 🗑️ Deleting product: ${productId} | Token: ${token ? 'OK' : 'MISSING'}`);
       
