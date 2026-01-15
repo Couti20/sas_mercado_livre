@@ -12,7 +12,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional
 
-from scraper import Scraper
+from scraper import Scraper, MAX_RETRIES, INITIAL_RETRY_DELAY, ScraperStats
+
+
+# Retry configuration for API layer
+API_MAX_RETRIES = 2  # Backend will retry 3 times total (this is 2nd layer)
 
 
 # ========================================
@@ -93,7 +97,8 @@ async def root():
 @app.post("/scrape", response_model=ScrapeResponse, responses={422: {"model": ErrorResponse}})
 async def scrape_product(request: ScrapeRequest):
     """
-    Asynchronously scrapes a Mercado Livre product page.
+    Asynchronously scrapes a Mercado Livre product page with retry logic.
+    Retries up to 2 times with exponential backoff if the first attempt fails.
     """
     if "mercadolivre" not in request.url and "mercadolibre" not in request.url:
         raise HTTPException(
@@ -101,29 +106,52 @@ async def scrape_product(request: ScrapeRequest):
             detail="URL must be from Mercado Livre (mercadolivre.com.br or mercadolibre.com)"
         )
     
-    try:
-        # Use the Scraper class to perform the scraping.
-        result = await Scraper.scrape_mercadolivre(request.url)
-        
-        if result is None:
+    # Retry logic at API layer
+    for api_attempt in range(API_MAX_RETRIES):
+        try:
+            # Use the Scraper class to perform the scraping (which has its own retry logic)
+            result = await Scraper.scrape_mercadolivre(request.url)
+            
+            if result is not None:
+                return ScrapeResponse(**result)
+            
+            # If result is None and this isn't the last attempt, retry
+            if api_attempt < API_MAX_RETRIES - 1:
+                wait_time = INITIAL_RETRY_DELAY * (2 ** api_attempt)
+                print(f"[INFO] API retry layer: Tentativa {api_attempt + 1} retornou None. Aguardando {wait_time}s...")
+                await asyncio.sleep(wait_time)
+                continue
+            
+            # Last attempt failed, raise error
             raise HTTPException(
                 status_code=422,
-                detail="Failed to scrape product data. The page may be unavailable or selectors need updating."
+                detail="Failed to scrape product data after all retries. The page may be unavailable or selectors need updating."
+            )
+
+        except asyncio.TimeoutError:
+            if api_attempt < API_MAX_RETRIES - 1:
+                print(f"[WARN] API retry layer: Tentativa {api_attempt + 1} com timeout. Retentando...")
+                await asyncio.sleep(INITIAL_RETRY_DELAY * (2 ** api_attempt))
+                continue
+            
+            raise HTTPException(
+                status_code=504,
+                detail="Scraping timed out after all retries. The page took too long to load or process."
             )
         
-        return ScrapeResponse(**result)
-
-    except asyncio.TimeoutError:
-        raise HTTPException(
-            status_code=504,
-            detail="Scraping timed out. The page took too long to load or process."
-        )
-    except Exception as e:
-        print(f"[ERROR] An unexpected error occurred during scraping: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"An internal server error occurred: {e}"
-        )
+        except HTTPException:
+            raise  # Re-raise HTTP exceptions
+        
+        except Exception as e:
+            print(f"[ERROR] API retry layer: Tentativa {api_attempt + 1} com erro: {e}")
+            if api_attempt < API_MAX_RETRIES - 1:
+                await asyncio.sleep(INITIAL_RETRY_DELAY * (2 ** api_attempt))
+                continue
+            
+            raise HTTPException(
+                status_code=500,
+                detail=f"An internal server error occurred: {e}"
+            )
 
 # ========================================
 # Run directly for testing

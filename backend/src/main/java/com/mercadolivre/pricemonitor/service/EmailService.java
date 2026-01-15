@@ -90,7 +90,7 @@ public class EmailService {
                 </div>
                 
                 <div style="background: #333; color: #999; padding: 15px; border-radius: 0 0 10px 10px; font-size: 12px; text-align: center;">
-                    Price Monitor - Mercado Livre
+                    MonitoraPreço - Inteligência Competitiva
                 </div>
             </div>
             """,

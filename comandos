@@ -1,4 +1,5 @@
  C:/Users/Michael/Desktop/sas_mercado_livre/.venv/Scripts/python.exe main.py == python 
+ C:/Users/Michael/Desktop/sas_mercado_livre/.venv/Scripts/python.exe -m watchgod main.run_server
 
     mvn clean package
  java -jar target/price-monitor-1.0.0.jar == java

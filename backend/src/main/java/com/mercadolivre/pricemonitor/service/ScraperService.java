@@ -59,8 +59,15 @@ public class ScraperService {
                             response.getTitle(), response.getPrice(), duration);
                 })
                 .doOnError(error -> log.error("❌ Async Scraper API error for URL '{}': {}", productUrl, error.getMessage()))
-                .retryWhen(Retry.backoff(2, Duration.ofSeconds(1)).maxAttempts(3)) // Optional: simple retry logic
-                .onErrorResume(e -> Mono.empty()) // On error, return an empty Mono instead of an exception
+                .retryWhen(Retry.backoff(2, Duration.ofSeconds(1))
+                        .maxAttempts(3)
+                        .doBeforeRetry(signal -> log.warn("🔄 Retry attempt {}/3 for URL: {}", 
+                            signal.totalRetries() + 1, productUrl))
+                ) // Retry with exponential backoff: 1s, 2s (max 3 attempts)
+                .onErrorResume(e -> {
+                    log.error("❌ Scraper failed after 3 retry attempts for URL: {}", productUrl);
+                    return Mono.empty();
+                })
                 .toFuture(); // Convert the Mono to a CompletableFuture
     }
 
