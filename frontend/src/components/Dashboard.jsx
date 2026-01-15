@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { getProducts, addProduct as apiAddProduct, deleteProduct as apiDeleteProduct, refreshPrices as apiRefreshPrices } from '../api/products';
@@ -21,6 +21,7 @@ export default function Dashboard() {
     const [filterBy, setFilterBy] = useState('all');
     const [confirmModal, setConfirmModal] = useState({ open: false, productId: null, productName: '' });
     const [priceHistoryModal, setPriceHistoryModal] = useState({ open: false, product: null });
+    const [lastUpdateTime, setLastUpdateTime] = useState(null);
 
     // --- React Query ---
 
@@ -30,6 +31,14 @@ export default function Dashboard() {
         queryFn: getProducts,
         staleTime: 1000 * 60 * 5, // 5 minutes
     });
+
+    // Update last update time when products are fetched
+    useEffect(() => {
+        if (products.length > 0) {
+            const now = new Date();
+            setLastUpdateTime(now);
+        }
+    }, [products]);
 
     // Mutation for adding a product
     const { mutate: addProduct, isPending: isAddingProduct } = useMutation({
@@ -100,6 +109,22 @@ export default function Dashboard() {
         }
     };
 
+    // Handle manual refresh - update time immediately and then trigger refresh
+    const handleRefreshClick = () => {
+        // Update the time immediately for visual feedback
+        setLastUpdateTime(new Date());
+        // Then trigger the actual refresh
+        refreshPrices();
+    };
+
+    // Format last update time
+    const formatUpdateTime = () => {
+        if (!lastUpdateTime) return '';
+        const hours = String(lastUpdateTime.getHours()).padStart(2, '0');
+        const minutes = String(lastUpdateTime.getMinutes()).padStart(2, '0');
+        return `${hours}:${minutes}`;
+    };
+
     // --- Derived State (Filtering and Sorting) ---
 
     const filteredAndSortedProducts = useMemo(() => {
@@ -136,19 +161,104 @@ export default function Dashboard() {
 
 
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
             <Header
                 onRefresh={refreshPrices}
                 refreshing={isRefreshing}
                 searchTerm={searchTerm}
                 onSearchChange={setSearchTerm}
             />
-            <main className="min-h-[calc(100vh-80px)] bg-gradient-to-br from-gray-50 via-indigo-50 to-purple-50">
-                <div className="container mx-auto px-4 py-10 max-w-7xl">
+            <main className="min-h-[calc(100vh-80px)]">
+                <div className="container mx-auto px-4 py-8 max-w-7xl">
+                    
+                    {/* Stats Bar */}
+                    <div className="mb-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {/* Total Products */}
+                        <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
+                            <div className="flex items-center gap-3">
+                                <span className="text-2xl">📦</span>
+                                <div>
+                                    <p className="text-slate-400 text-xs font-medium">Total Produtos</p>
+                                    <p className="text-white font-bold text-xl">{products.length}</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        {/* Price Drops */}
+                        <div className="bg-slate-800/50 border border-emerald-500/30 rounded-xl p-4">
+                            <div className="flex items-center gap-3">
+                                <span className="text-2xl">📉</span>
+                                <div>
+                                    <p className="text-slate-400 text-xs font-medium">Preços em Queda</p>
+                                    <p className="text-emerald-400 font-bold text-xl">
+                                        {products.filter(p => p.lastPrice && p.currentPrice < p.lastPrice).length}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        {/* Price Ups */}
+                        <div className="bg-slate-800/50 border border-red-500/30 rounded-xl p-4">
+                            <div className="flex items-center gap-3">
+                                <span className="text-2xl">📈</span>
+                                <div>
+                                    <p className="text-slate-400 text-xs font-medium">Preços Subindo</p>
+                                    <p className="text-red-400 font-bold text-xl">
+                                        {products.filter(p => p.lastPrice && p.currentPrice > p.lastPrice).length}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        {/* Last Update */}
+                        <div className="bg-slate-800/50 border border-amber-500/30 rounded-xl p-4">
+                            <div className="flex items-center gap-3">
+                                <span className="text-2xl">🕐</span>
+                                <div>
+                                    <p className="text-slate-400 text-xs font-medium">Última Atualização</p>
+                                    <p className="text-amber-400 font-bold text-xl">
+                                        {lastUpdateTime ? formatUpdateTime() : '--:--'}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Update Bar */}
+                    <div className="mb-6 p-4 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/30 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center text-white">
+                                🔄
+                            </div>
+                            <div>
+                                <p className="text-white font-semibold">Atualização de Preços</p>
+                                <p className="text-slate-400 text-sm">
+                                    {isRefreshing 
+                                        ? 'Buscando preços no Mercado Livre...' 
+                                        : 'Clique para buscar os preços mais recentes'}
+                                </p>
+                            </div>
+                        </div>
+                        <button 
+                            onClick={handleRefreshClick}
+                            disabled={isRefreshing}
+                            className="px-6 py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-lg transition-all transform hover:scale-105 active:scale-95 flex items-center gap-2 shadow-lg shadow-amber-500/25"
+                        >
+                            {isRefreshing ? (
+                                <>
+                                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                    Atualizando...
+                                </>
+                            ) : (
+                                <>🔄 Atualizar Agora</>
+                            )}
+                        </button>
+                    </div>
+
                     <AddProduct onAdd={handleAddProduct} adding={isAddingProduct} />
                     
                     {isFetchError && (
-                         <div className="rounded-2xl shadow-lg p-8 text-center bg-red-50 text-red-700">
+                         <div className="rounded-2xl shadow-lg p-8 text-center bg-red-500/10 border border-red-500/30 text-red-400">
                            <h3 className="text-xl font-semibold mb-2">❌ Erro ao Carregar Produtos</h3>
                            <p>Não foi possível buscar os dados. Verifique a conexão com o servidor.</p>
                          </div>

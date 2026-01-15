@@ -1,4 +1,4 @@
-import { useContext } from 'react';
+import { useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 
@@ -7,10 +7,11 @@ export default function Landing() {
   const navigate = useNavigate();
 
   // Se usuário já está logado, redirecionar para dashboard
-  if (user) {
-    navigate('/');
-    return null;
-  }
+  useEffect(() => {
+    if (user) {
+      navigate('/dashboard');
+    }
+  }, [user, navigate]);
 
   const features = [
     {
@@ -57,7 +58,7 @@ export default function Landing() {
           <div className="text-4xl">📊</div>
           <div className="flex flex-col">
             <h1 className="text-2xl font-bold bg-gradient-to-r from-amber-400 to-orange-400 bg-clip-text text-transparent">
-              Price Monitor
+              MonitoraPreço
             </h1>
             <p className="text-xs text-slate-400">Maximize seus lucros</p>
           </div>
@@ -83,12 +84,12 @@ export default function Landing() {
         <div className="w-full">
           {/* Badge */}
           <div className="inline-block mb-6 px-4 py-2 bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/50 rounded-full">
-            <span className="text-amber-400 font-semibold text-sm">✨ Micro SaaS para Vendedores Inteligentes</span>
+            <span className="text-amber-400 font-semibold text-sm">🔍 Inteligência Competitiva para E-commerce</span>
           </div>
 
           {/* Main headline */}
           <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 leading-tight">
-            Rastreie Preços do
+            Monitore seus Concorrentes no
             <span className="block bg-gradient-to-r from-amber-400 via-orange-500 to-red-500 bg-clip-text text-transparent">
               Mercado Livre em Tempo Real
             </span>
@@ -96,8 +97,8 @@ export default function Landing() {
 
           {/* Subheadline */}
           <p className="text-xl md:text-2xl text-slate-400 mb-8 max-w-2xl mx-auto leading-relaxed">
-            Monitore seus produtos, receba alertas instantâneos e maximize seus lucros. 
-            Sem complicações, sem limite de produtos.
+            Saiba quando seus concorrentes mudam preços, analise tendências do mercado 
+            e tome decisões estratégicas para vender mais.
           </p>
 
           {/* CTA Buttons */}
@@ -106,13 +107,13 @@ export default function Landing() {
               onClick={() => navigate('/register')}
               className="px-8 py-4 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold rounded-lg hover:shadow-2xl hover:shadow-amber-500/50 transition-all transform hover:scale-105 text-lg"
             >
-              🚀 Começar Agora (Grátis)
+              🚀 Monitorar Concorrentes Agora
             </button>
             <button 
               onClick={() => window.scrollTo({ top: window.innerHeight, behavior: 'smooth' })}
               className="px-8 py-4 border-2 border-slate-600 text-white font-bold rounded-lg hover:border-amber-500 hover:text-amber-400 transition-all text-lg"
             >
-              📖 Saiba Mais
+              🎯 Ver Como Funciona
             </button>
           </div>
 
@@ -120,15 +121,15 @@ export default function Landing() {
           <div className="flex flex-wrap justify-center gap-6 text-sm text-slate-400">
             <div className="flex items-center gap-2">
               <span className="text-green-400">✓</span>
+              <span>Teste grátis por 14 dias</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-green-400">✓</span>
               <span>Sem cartão de crédito</span>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-green-400">✓</span>
               <span>Cancele quando quiser</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-green-400">✓</span>
-              <span>Suporte 24/7</span>
             </div>
           </div>
         </div>
@@ -138,64 +139,64 @@ export default function Landing() {
       <section className="py-20 px-6 relative">
         <div className="max-w-6xl mx-auto">
           <h2 className="text-4xl font-bold text-white mb-4 text-center">
-            Por que MonitoraPreço?
+            Por que usar Inteligência Competitiva?
           </h2>
           <p className="text-center text-slate-400 mb-12 text-lg max-w-2xl mx-auto">
-            Construído especialmente para vendedores que querem crescer no Mercado Livre
+            Quem conhece o mercado, vende mais. Veja como podemos te ajudar:
           </p>
 
           <div className="grid md:grid-cols-3 gap-8">
             {/* Feature 1 */}
             <div className="bg-slate-800/50 backdrop-blur border border-slate-700 rounded-xl p-8 hover:border-amber-500/50 transition-all hover:shadow-lg hover:shadow-amber-500/10">
               <div className="text-5xl mb-4">⚡</div>
-              <h3 className="text-xl font-bold text-white mb-3">Monitoramento em Tempo Real</h3>
+              <h3 className="text-xl font-bold text-white mb-3">Espionagem de Concorrentes</h3>
               <p className="text-slate-400">
-                Verificamos o preço dos seus produtos automaticamente. Sem ficar refrescando manualmente.
+                Monitore os preços dos seus concorrentes automaticamente. Saiba quando eles baixam ou aumentam preços.
               </p>
             </div>
 
             {/* Feature 2 */}
             <div className="bg-slate-800/50 backdrop-blur border border-slate-700 rounded-xl p-8 hover:border-amber-500/50 transition-all hover:shadow-lg hover:shadow-amber-500/10">
               <div className="text-5xl mb-4">🔔</div>
-              <h3 className="text-xl font-bold text-white mb-3">Alertas Inteligentes</h3>
+              <h3 className="text-xl font-bold text-white mb-3">Alertas Estratégicos</h3>
               <p className="text-slate-400">
-                Receba notificações instantâneas quando o preço mudar. Destaques em queda de 5% ou mais.
+                Receba alertas quando um concorrente mudar preço. Reaja rápido e não perca vendas.
               </p>
             </div>
 
             {/* Feature 3 */}
             <div className="bg-slate-800/50 backdrop-blur border border-slate-700 rounded-xl p-8 hover:border-amber-500/50 transition-all hover:shadow-lg hover:shadow-amber-500/10">
               <div className="text-5xl mb-4">📊</div>
-              <h3 className="text-xl font-bold text-white mb-3">Análise de Preços</h3>
+              <h3 className="text-xl font-bold text-white mb-3">Análise de Mercado</h3>
               <p className="text-slate-400">
-                Visualize histórico de preços em gráficos. Entenda tendências e padrões do mercado.
+                Visualize tendências de preços em gráficos. Entenda o comportamento do seu nicho.
               </p>
             </div>
 
             {/* Feature 4 */}
             <div className="bg-slate-800/50 backdrop-blur border border-slate-700 rounded-xl p-8 hover:border-amber-500/50 transition-all hover:shadow-lg hover:shadow-amber-500/10">
               <div className="text-5xl mb-4">🎯</div>
-              <h3 className="text-xl font-bold text-white mb-3">Sem Limite de Produtos</h3>
+              <h3 className="text-xl font-bold text-white mb-3">Monitore Vários Concorrentes</h3>
               <p className="text-slate-400">
-                Monitore quantos produtos quiser. Quanto mais, melhor sua estratégia de precificação.
+                Adicione quantos concorrentes quiser. Tenha uma visão completa do seu mercado.
               </p>
             </div>
 
             {/* Feature 5 */}
             <div className="bg-slate-800/50 backdrop-blur border border-slate-700 rounded-xl p-8 hover:border-amber-500/50 transition-all hover:shadow-lg hover:shadow-amber-500/10">
               <div className="text-5xl mb-4">🔐</div>
-              <h3 className="text-xl font-bold text-white mb-3">Seus Dados Seguros</h3>
+              <h3 className="text-xl font-bold text-white mb-3">100% Anônimo</h3>
               <p className="text-slate-400">
-                Criptografia SSL, sem compartilhamento de dados. Sua privacidade é prioridade.
+                Seus concorrentes nunca sabem que estão sendo monitorados. Operação discreta.
               </p>
             </div>
 
             {/* Feature 6 */}
             <div className="bg-slate-800/50 backdrop-blur border border-slate-700 rounded-xl p-8 hover:border-amber-500/50 transition-all hover:shadow-lg hover:shadow-amber-500/10">
               <div className="text-5xl mb-4">⚙️</div>
-              <h3 className="text-xl font-bold text-white mb-3">Configurações Personalizadas</h3>
+              <h3 className="text-xl font-bold text-white mb-3">Decisões Baseadas em Dados</h3>
               <p className="text-slate-400">
-                Escolha quais tipos de alerta você quer receber. Você controla tudo.
+                Pare de chutar preços. Use dados reais para definir sua estratégia de preços.
               </p>
             </div>
           </div>
@@ -218,7 +219,7 @@ export default function Landing() {
               <div className="flex-1">
                 <h3 className="text-2xl font-bold text-white mb-2">Crie sua Conta</h3>
                 <p className="text-slate-400 text-lg">
-                  Rápido e simples. Apenas email e senha. Nada de burocracias.
+                  Cadastro rápido. Email e senha. Pronto em 30 segundos.
                 </p>
               </div>
             </div>
@@ -229,9 +230,9 @@ export default function Landing() {
                 2
               </div>
               <div className="flex-1">
-                <h3 className="text-2xl font-bold text-white mb-2">Adicione seus Produtos</h3>
+                <h3 className="text-2xl font-bold text-white mb-2">Adicione Concorrentes</h3>
                 <p className="text-slate-400 text-lg">
-                  Cole o link do Mercado Livre. Instantaneamente começamos a monitorar.
+                  Cole o link do anúncio do concorrente. Começamos a monitorar imediatamente.
                 </p>
               </div>
             </div>
@@ -242,9 +243,9 @@ export default function Landing() {
                 3
               </div>
               <div className="flex-1">
-                <h3 className="text-2xl font-bold text-white mb-2">Receba Alertas</h3>
+                <h3 className="text-2xl font-bold text-white mb-2">Acompanhe Mudanças</h3>
                 <p className="text-slate-400 text-lg">
-                  Quando preço mudar, você fica sabendo. No seu email, no seu tempo.
+                  Veja quando eles mudam preços. Receba alertas em tempo real.
                 </p>
               </div>
             </div>
@@ -255,9 +256,9 @@ export default function Landing() {
                 4
               </div>
               <div className="flex-1">
-                <h3 className="text-2xl font-bold text-white mb-2">Lucre Mais</h3>
+                <h3 className="text-2xl font-bold text-white mb-2">Tome Decisões Estratégicas</h3>
                 <p className="text-slate-400 text-lg">
-                  Com dados em mão, você ajusta preços inteligentemente e vende mais.
+                  Com dados do mercado, ajuste seus preços e fique sempre competitivo.
                 </p>
               </div>
             </div>
@@ -276,52 +277,52 @@ export default function Landing() {
             {/* Use case 1 */}
             <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700 rounded-xl p-8">
               <div className="text-4xl mb-4">🏪</div>
-              <h3 className="text-xl font-bold text-white mb-3">Vendedores de Eletrônicos</h3>
+              <h3 className="text-xl font-bold text-white mb-3">Vendedores de E-commerce</h3>
               <p className="text-slate-400 mb-4">
-                Monitore concorrentes e ajuste seus preços estrategicamente. Ganhe mais vendas com preços competitivos.
+                Monitore os preços dos concorrentes diretos. Saiba quando eles fazem promoções e reaja rápido.
               </p>
               <div className="flex items-center gap-2 text-amber-400">
-                <span>📈</span>
-                <span className="font-semibold">Até 23% mais lucro</span>
+                <span>💪</span>
+                <span className="font-semibold">Sempre um passo à frente</span>
               </div>
             </div>
 
             {/* Use case 2 */}
             <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700 rounded-xl p-8">
-              <div className="text-4xl mb-4">👗</div>
-              <h3 className="text-xl font-bold text-white mb-3">Lojistas de Moda</h3>
+              <div className="text-4xl mb-4">💰</div>
+              <h3 className="text-xl font-bold text-white mb-3">Gestores de Precificação</h3>
               <p className="text-slate-400 mb-4">
-                Acompanhe tendências de preços por tamanho e cor. Venda mais rápido com preços dinâmicos.
+                Dados históricos para definir preços com base no mercado real. Nada de achismo.
               </p>
               <div className="flex items-center gap-2 text-amber-400">
-                <span>⚡</span>
-                <span className="font-semibold">Vende 3x mais rápido</span>
+                <span>📈</span>
+                <span className="font-semibold">Decisões baseadas em dados</span>
               </div>
             </div>
 
             {/* Use case 3 */}
             <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700 rounded-xl p-8">
-              <div className="text-4xl mb-4">🎮</div>
-              <h3 className="text-xl font-bold text-white mb-3">Vendedores de Games</h3>
+              <div className="text-4xl mb-4">🔍</div>
+              <h3 className="text-xl font-bold text-white mb-3">Analistas de Mercado</h3>
               <p className="text-slate-400 mb-4">
-                Preços mudam constantemente. Com MonitoraPreço, você nunca perde uma oportunidade.
+                Entenda como o mercado se comporta. Identifique padrões e oportunidades.
               </p>
               <div className="flex items-center gap-2 text-amber-400">
                 <span>🎯</span>
-                <span className="font-semibold">Sempre competitivo</span>
+                <span className="font-semibold">Visão estratégica completa</span>
               </div>
             </div>
 
             {/* Use case 4 */}
             <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700 rounded-xl p-8">
-              <div className="text-4xl mb-4">📚</div>
-              <h3 className="text-xl font-bold text-white mb-3">Revendedores Diversos</h3>
+              <div className="text-4xl mb-4">🚀</div>
+              <h3 className="text-xl font-bold text-white mb-3">Empresários em Crescimento</h3>
               <p className="text-slate-400 mb-4">
-                Qualquer segmento se beneficia. Mais dados = melhores decisões = mais lucro.
+                Escale seu negócio conhecendo o mercado. Cresça com inteligência.
               </p>
               <div className="flex items-center gap-2 text-amber-400">
                 <span>✨</span>
-                <span className="font-semibold">Simples e eficaz</span>
+                <span className="font-semibold">Cresça com confiança</span>
               </div>
             </div>
           </div>
@@ -401,16 +402,16 @@ export default function Landing() {
         <div className="max-w-4xl mx-auto text-center">
           <div className="bg-gradient-to-r from-amber-600/20 to-orange-600/20 border border-amber-500/50 rounded-2xl p-12">
             <h2 className="text-4xl font-bold text-white mb-6">
-              Pronto para Aumentar seus Lucros?
+              Pronto para Conhecer seus Concorrentes?
             </h2>
             <p className="text-xl text-slate-300 mb-8">
-              Junte-se a centenas de vendedores que já usam MonitoraPreço
+              Comece a monitorar agora e tome decisões estratégicas baseadas em dados reais
             </p>
             <button 
               onClick={() => navigate('/register')}
               className="px-10 py-4 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold rounded-lg hover:shadow-2xl hover:shadow-amber-500/50 transition-all transform hover:scale-105 text-lg"
             >
-              🚀 Começar Grátis Agora
+              🔍 Monitorar Concorrentes Agora
             </button>
           </div>
         </div>

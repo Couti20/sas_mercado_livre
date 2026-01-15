@@ -88,28 +88,28 @@ export default function Register() {
         <div className="bg-gradient-to-br from-slate-800 to-slate-900 backdrop-blur-md rounded-2xl shadow-2xl p-10 border border-slate-700/50">
           <div className="text-center mb-10">
             <div className="inline-block bg-gradient-to-br from-green-500 to-emerald-500 p-3 rounded-xl mb-4 hover:scale-110 transition-transform duration-300">
-              <span className="text-4xl">✨</span>
+              <span className="text-4xl">🚀</span>
             </div>
             <h1 className="text-3xl font-bold text-white mb-2">
-              Comece Agora!
+              Comece a Monitorar!
             </h1>
             <p className="text-slate-400 text-sm font-medium">
-              Crie sua conta e monitore preços do Mercado Livre
+              Crie sua conta e monitore seus concorrentes no Mercado Livre
             </p>
           </div>
 
           <div className="bg-slate-700/30 border border-slate-600/50 rounded-lg p-4 mb-8 space-y-2 text-sm text-slate-300">
             <div className="flex items-center gap-2">
               <span className="text-green-400">✓</span>
-              <span>100% grátis - sem cartão necessário</span>
+              <span>Teste grátis por 14 dias - sem cartão</span>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-green-400">✓</span>
-              <span>Comece a monitorar em 2 minutos</span>
+              <span>Monitoramento anônimo de concorrentes</span>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-green-400">✓</span>
-              <span>Aumentar vendas inteligentemente</span>
+              <span>Alertas em tempo real quando preços mudam</span>
             </div>
           </div>
 

@@ -67,28 +67,28 @@ export default function Login() {
         <div className="bg-gradient-to-br from-slate-800 to-slate-900 backdrop-blur-md rounded-2xl shadow-2xl p-10 border border-slate-700/50">
           <div className="text-center mb-10">
             <div className="inline-block bg-gradient-to-br from-amber-500 to-orange-500 p-3 rounded-xl mb-4 hover:scale-110 transition-transform duration-300">
-              <span className="text-4xl">���</span>
+              <span className="text-4xl">🔍</span>
             </div>
             <h1 className="text-3xl font-bold text-white mb-2">
               Bem-vindo de Volta!
             </h1>
             <p className="text-slate-400 text-sm font-medium">
-              Entre na sua conta e continue monitorando
+              Continue monitorando seus concorrentes
             </p>
           </div>
 
           <div className="bg-slate-700/30 border border-slate-600/50 rounded-lg p-4 mb-8 space-y-2 text-sm text-slate-300">
             <div className="flex items-center gap-2">
               <span className="text-amber-400">✓</span>
-              <span>Monitore até 50 produtos simultaneamente</span>
+              <span>Monitore preços de concorrentes 24/7</span>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-amber-400">✓</span>
-              <span>Receba alertas em tempo real</span>
+              <span>Receba alertas quando eles mudarem preços</span>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-amber-400">✓</span>
-              <span>Aumente seus lucros inteligentemente</span>
+              <span>Tome decisões estratégicas com dados reais</span>
             </div>
           </div>
 

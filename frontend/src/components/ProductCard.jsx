@@ -5,100 +5,178 @@ import NotificationPreferences from './NotificationPreferences'
 export default function ProductCard({ product, onDelete, onShowHistory, onUpdateProduct }) {
   const [showHistory, setShowHistory] = useState(false)
   const [showPreferences, setShowPreferences] = useState(false)
+  const [imageLoaded, setImageLoaded] = useState(false)
+  const [imageError, setImageError] = useState(false)
 
   const priceChange = product.lastPrice 
     ? ((product.currentPrice - product.lastPrice) / product.lastPrice * 100).toFixed(1)
     : 0
   const isPriceDropped = priceChange < 0
+  const isPriceUp = priceChange > 0
+
+  // Placeholder image when product doesn't have imageUrl or it fails to load
+  const placeholderImage = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='200' viewBox='0 0 300 200'%3E%3Crect fill='%23f1f5f9' width='300' height='200'/%3E%3Ctext fill='%2394a3b8' font-family='sans-serif' font-size='14' x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle'%3E📦 Sem imagem%3C/text%3E%3C/svg%3E"
 
   return (
     <>
-      <div 
-        className="rounded-2xl shadow-lg hover:shadow-2xl bg-white border border-gray-100 overflow-hidden transition-all duration-300 hover:border-indigo-200 hover:-translate-y-1 group"
-      >
-        {/* Price Drop Alert */}
-        {isPriceDropped && (
-          <div className="bg-gradient-to-r from-emerald-400 to-emerald-500 text-white px-[clamp(0.75rem,2vw,1.25rem)] py-[clamp(0.5rem,1.5vh,0.75rem)] text-center font-bold text-[clamp(0.75rem,1.5vw,0.875rem)]">
-            🎉 PREÇO CAIU {Math.abs(priceChange)}%
-          </div>
-        )}
+      <div className="rounded-2xl shadow-lg hover:shadow-2xl bg-white border border-slate-200 overflow-hidden transition-all duration-300 hover:border-amber-300 hover:-translate-y-1 group">
+        
+        {/* Product Image Section */}
+        <div className="relative aspect-[16/10] overflow-hidden bg-slate-100">
+          {/* Image with lazy loading */}
+          <a 
+            href={product.url} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="block w-full h-full"
+          >
+            {/* Skeleton loader while image loads */}
+            {!imageLoaded && !imageError && (
+              <div className="absolute inset-0 bg-slate-200 animate-pulse flex items-center justify-center">
+                <span className="text-4xl">📦</span>
+              </div>
+            )}
+            
+            <img
+              src={imageError || !product.imageUrl ? placeholderImage : product.imageUrl}
+              alt={product.name}
+              loading="lazy"
+              onLoad={() => setImageLoaded(true)}
+              onError={() => setImageError(true)}
+              className={`w-full h-full object-cover transition-all duration-500 group-hover:scale-110 ${
+                imageLoaded ? 'opacity-100' : 'opacity-0'
+              }`}
+            />
+            
+            {/* Hover overlay */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-4">
+              <span className="text-white text-sm font-semibold flex items-center gap-2">
+                🔗 Ver no Mercado Livre
+              </span>
+            </div>
+          </a>
+
+          {/* Price Drop Badge - positioned on image */}
+          {isPriceDropped && (
+            <div className="absolute top-3 left-3 bg-gradient-to-r from-emerald-500 to-green-500 text-white px-3 py-1.5 rounded-full text-xs font-bold shadow-lg flex items-center gap-1 animate-pulse">
+              🔥 -{Math.abs(priceChange)}%
+            </div>
+          )}
+
+          {/* Price Up Badge */}
+          {isPriceUp && (
+            <div className="absolute top-3 left-3 bg-gradient-to-r from-red-500 to-orange-500 text-white px-3 py-1.5 rounded-full text-xs font-bold shadow-lg flex items-center gap-1">
+              📈 +{Math.abs(priceChange)}%
+            </div>
+          )}
+
+          {/* Delete Button - positioned on image */}
+          <button
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              onDelete(product.id, product.name)
+            }}
+            className="absolute top-3 right-3 p-2 rounded-full bg-white/90 hover:bg-red-500 text-slate-600 hover:text-white transition-all duration-300 opacity-0 group-hover:opacity-100 shadow-lg hover:scale-110 active:scale-95"
+            title="Remover produto"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
 
         {/* Card Content */}
-        <div className="p-[clamp(1rem,5vw,1.5rem)]">
+        <div className="p-4">
           
-          {/* Product Header with Delete */}
-          <div className="flex items-start justify-between mb-[1rem]">
-            <div className="flex-1 pr-[0.5rem]">
-              <a 
-                href={product.url} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-[clamp(0.875rem,2vw,1rem)] font-bold text-gray-900 hover:text-indigo-600 line-clamp-2 transition-colors group-hover:text-indigo-500 leading-snug"
-              >
-                {product.name}
-              </a>
-            </div>
-            <button
-              onClick={() => onDelete(product.id, product.name)}
-              className="p-[0.5rem] rounded-lg hover:bg-red-50 transition-all duration-300 flex-shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100 cursor-pointer hover:scale-110 active:scale-95"
-              title="Deletar produto"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-red-600 hover:text-red-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-            </button>
-          </div>
+          {/* Product Name */}
+          <a 
+            href={product.url} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="block mb-3"
+          >
+            <h3 className="text-sm font-bold text-slate-800 hover:text-amber-600 line-clamp-2 transition-colors leading-snug">
+              {product.name}
+            </h3>
+          </a>
 
-          {/* Price Display Section */}
-          <div className={`mb-[1.25rem] p-[clamp(0.75rem,2vw,1rem)] rounded-xl transition-all duration-300 ${
+          {/* Price Section */}
+          <div className={`mb-4 p-3 rounded-xl transition-all duration-300 ${
             isPriceDropped 
-              ? 'bg-gradient-to-br from-emerald-50 to-emerald-100 border-2 border-emerald-200' 
-              : 'bg-gradient-to-br from-gray-50 to-gray-100'
+              ? 'bg-gradient-to-br from-emerald-50 to-green-50 border border-emerald-200' 
+              : isPriceUp
+                ? 'bg-gradient-to-br from-red-50 to-orange-50 border border-red-200'
+                : 'bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-200'
           }`}>
-            {/* Current Price */}
-            <div className="mb-[0.75rem]">
-              <span className="text-[clamp(0.5rem,1vw,0.625rem)] font-bold text-gray-700 uppercase tracking-widest">
-                💰 Preço Atual
-              </span>
-              <div className="text-[clamp(1.75rem,4vw,2.25rem)] font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent mt-[0.25rem]">
-                R$ {product.currentPrice?.toFixed(2) || '0.00'}
-              </div>
-            </div>
-            
-            {/* Price Change */}
-            {product.lastPrice && (
-              <div className="flex items-center justify-between text-[clamp(0.75rem,1.5vw,0.875rem)] pt-[0.75rem] border-t border-gray-200">
-                <span className="text-gray-700">
-                  <span className="font-semibold">Antes:</span> R$ {product.lastPrice.toFixed(2)}
+            {/* Current Price - Main */}
+            <div className="flex items-baseline justify-between">
+              <div>
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                  Preço Atual
                 </span>
-                <span className={`font-bold flex items-center gap-[0.25rem] ${
+                <div className={`text-2xl font-bold ${
+                  isPriceDropped 
+                    ? 'text-emerald-600' 
+                    : isPriceUp 
+                      ? 'text-red-600'
+                      : 'text-slate-800'
+                }`}>
+                  R$ {product.currentPrice?.toFixed(2) || '0.00'}
+                </div>
+              </div>
+              
+              {/* Price Change Indicator */}
+              {product.lastPrice && (
+                <div className={`text-right ${
                   isPriceDropped ? 'text-emerald-600' : 'text-red-600'
                 }`}>
-                  {isPriceDropped ? '📉' : '📈'} {Math.abs(priceChange)}%
+                  <span className="text-2xl">{isPriceDropped ? '📉' : '📈'}</span>
+                  <div className="text-xs font-bold">
+                    {isPriceDropped ? '-' : '+'}{Math.abs(priceChange)}%
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            {/* Previous Price */}
+            {product.lastPrice && product.lastPrice !== product.currentPrice && (
+              <div className="mt-2 pt-2 border-t border-slate-200/50 text-xs text-slate-500">
+                <span className="font-medium">Antes:</span>{' '}
+                <span className="line-through">R$ {product.lastPrice.toFixed(2)}</span>
+                <span className={`ml-2 font-semibold ${isPriceDropped ? 'text-emerald-600' : 'text-red-600'}`}>
+                  ({isPriceDropped ? '💰 economia' : '⚠️ aumento'} de R$ {Math.abs(product.currentPrice - product.lastPrice).toFixed(2)})
                 </span>
+              </div>
+            )}
+            
+            {/* Stable Price Message */}
+            {product.lastPrice && product.lastPrice === product.currentPrice && (
+              <div className="mt-2 pt-2 border-t border-slate-200/50 text-xs text-slate-400">
+                <span>✓ Preço estável desde última verificação</span>
               </div>
             )}
           </div>
 
-          {/* Action Buttons Grid */}
-          <div className="grid grid-cols-3 gap-[0.75rem]">
+          {/* Action Buttons */}
+          <div className="grid grid-cols-3 gap-2">
             {/* History Button */}
             <button
               onClick={() => setShowHistory(true)}
-              className="px-[clamp(0.5rem,2vw,0.75rem)] py-[clamp(0.75rem,2vh,1rem)] rounded-lg text-[clamp(0.625rem,1vw,0.75rem)] font-bold bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-600 hover:to-indigo-700 transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-md hover:shadow-lg flex items-center justify-center gap-[0.25rem] min-h-[44px]"
+              className="py-2.5 px-2 rounded-lg text-xs font-bold bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:from-amber-600 hover:to-orange-600 transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-md hover:shadow-lg flex items-center justify-center gap-1"
               title="Ver histórico de preços"
             >
-              <span className="text-[1em]">📊</span>
+              <span>📊</span>
               <span className="hidden sm:inline">Histórico</span>
             </button>
 
             {/* Notification Button */}
             <button
               onClick={() => setShowPreferences(true)}
-              className="px-[clamp(0.5rem,2vw,0.75rem)] py-[clamp(0.75rem,2vh,1rem)] rounded-lg text-[clamp(0.625rem,1vw,0.75rem)] font-bold bg-white border-2 border-purple-500 text-purple-600 hover:bg-purple-50 hover:border-purple-600 transition-all duration-300 transform hover:scale-105 active:scale-95 flex items-center justify-center gap-[0.25rem] min-h-[44px]"
-              title="Configurar notificações"
+              className="py-2.5 px-2 rounded-lg text-xs font-bold bg-white border-2 border-slate-300 text-slate-700 hover:bg-slate-50 hover:border-slate-400 transition-all duration-300 transform hover:scale-105 active:scale-95 flex items-center justify-center gap-1"
+              title="Configurar alertas"
             >
-              <span className="text-[1em]">🔔</span>
+              <span>🔔</span>
               <span className="hidden sm:inline">Alertas</span>
             </button>
 
@@ -107,11 +185,11 @@ export default function ProductCard({ product, onDelete, onShowHistory, onUpdate
               href={product.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="px-[clamp(0.5rem,2vw,0.75rem)] py-[clamp(0.75rem,2vh,1rem)] rounded-lg text-[clamp(0.625rem,1vw,0.75rem)] font-bold bg-white border-2 border-emerald-500 text-emerald-600 hover:bg-emerald-50 hover:border-emerald-600 transition-all duration-300 transform hover:scale-105 active:scale-95 flex items-center justify-center gap-[0.25rem] min-h-[44px]"
-              title="Visitar no Mercado Livre"
+              className="py-2.5 px-2 rounded-lg text-xs font-bold bg-white border-2 border-amber-400 text-amber-600 hover:bg-amber-50 hover:border-amber-500 transition-all duration-300 transform hover:scale-105 active:scale-95 flex items-center justify-center gap-1"
+              title="Ver anúncio do concorrente"
             >
-              <span className="text-[1em]">🔗</span>
-              <span className="hidden sm:inline">Visitar</span>
+              <span>🔗</span>
+              <span className="hidden sm:inline">Ver Anúncio</span>
             </a>
           </div>
         </div>

@@ -56,19 +56,19 @@ function AddProduct({ onAdd, adding }) {
   }
 
   return (
-    <div className="rounded-2xl shadow-xl p-8 mb-10 transition-all duration-300 bg-gradient-to-br from-white to-indigo-50 border-2 border-indigo-100 hover:border-indigo-300 hover:shadow-2xl">
+    <div className="rounded-2xl shadow-xl p-8 mb-10 transition-all duration-300 bg-slate-800/80 backdrop-blur-sm border-2 border-slate-700 hover:border-amber-500/50 hover:shadow-2xl hover:shadow-amber-500/10">
       {/* Header */}
       <div className="flex items-center gap-4 mb-6">
-        <div className="p-3 rounded-xl bg-gradient-to-br from-indigo-600 to-purple-600 shadow-lg">
+        <div className="p-3 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 shadow-lg shadow-amber-500/20">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
         </div>
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">
+          <h2 className="text-2xl font-bold text-white">
             Adicionar Novo Produto
           </h2>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-slate-400">
             Cole a URL do Mercado Livre para começar o monitoramento
           </p>
         </div>
@@ -99,7 +99,7 @@ function AddProduct({ onAdd, adding }) {
                 onPaste={handlePaste}
                 placeholder="https://www.mercadolivre.com.br/seu-produto..."
                 disabled={adding}
-                className="w-full pl-12 pr-4 py-4 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed bg-white border-gray-200 text-gray-800 placeholder-gray-400 focus:border-indigo-500 focus:ring-indigo-200 hover:border-indigo-300 font-medium"
+                className="w-full pl-12 pr-4 py-4 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed bg-slate-900/50 border-slate-600 text-white placeholder-slate-500 focus:border-amber-500 focus:ring-amber-500/20 hover:border-slate-500 font-medium"
               />
             </div>
           </div>
@@ -109,7 +109,7 @@ function AddProduct({ onAdd, adding }) {
             <button
               type="submit"
               disabled={adding || !url.trim()}
-              className="flex items-center justify-center gap-2 px-8 py-4 rounded-xl font-bold transition-all duration-300 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white active:scale-95 transform hover:scale-105 w-full sm:w-auto"
+              className="flex items-center justify-center gap-2 px-8 py-4 rounded-xl font-bold transition-all duration-300 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white active:scale-95 transform hover:scale-105 w-full sm:w-auto"
             >
               {adding ? (
                 <>
@@ -130,26 +130,26 @@ function AddProduct({ onAdd, adding }) {
         
         {/* Error Message */}
         {error && (
-          <div className="flex items-start gap-3 mt-5 p-4 rounded-xl bg-red-50 border-2 border-red-200 animate-in fade-in slide-in-from-top-2 duration-300">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="flex items-start gap-3 mt-5 p-4 rounded-xl bg-red-900/30 border-2 border-red-500/50 animate-in fade-in slide-in-from-top-2 duration-300">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-red-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 8v4m0 4v.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <p className="text-sm font-medium text-red-700">
+            <p className="text-sm font-medium text-red-300">
               {error}
             </p>
           </div>
         )}
 
         {/* Info Box */}
-        <div className="mt-6 p-4 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200">
+        <div className="mt-6 p-4 rounded-xl bg-slate-900/50 border-2 border-slate-600">
           <div className="flex items-start gap-3">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-amber-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <div className="text-sm text-blue-700">
-              <p className="font-semibold mb-1">ℹ️ Informações Importantes:</p>
-              <p>✅ Backend: <strong>http://localhost:8081</strong></p>
-              <p>✅ Scraper Python: <strong>http://localhost:8000</strong></p>
+            <div className="text-sm text-slate-300">
+              <p className="font-semibold mb-1 text-amber-400">ℹ️ Informações Importantes:</p>
+              <p>✅ Backend: <strong className="text-white">http://localhost:8081</strong></p>
+              <p>✅ Scraper Python: <strong className="text-white">http://localhost:8000</strong></p>
             </div>
           </div>
         </div>
