@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 
 import { getProducts, addProduct as apiAddProduct, deleteProduct as apiDeleteProduct, refreshPrices as apiRefreshPrices } from '../api/products';
 
@@ -22,6 +23,7 @@ export default function Dashboard() {
     const [confirmModal, setConfirmModal] = useState({ open: false, productId: null, productName: '' });
     const [priceHistoryModal, setPriceHistoryModal] = useState({ open: false, product: null });
     const [lastUpdateTime, setLastUpdateTime] = useState(null);
+    const [emailVerificationModal, setEmailVerificationModal] = useState({ open: false, limit: 2 });
 
     // --- React Query ---
 
@@ -48,7 +50,12 @@ export default function Dashboard() {
             queryClient.invalidateQueries({ queryKey: ['products'] });
         },
         onError: (error) => {
-            addToast(`❌ ${error.message}`, 'error');
+            // Check if it's email verification limit error
+            if (error.code === 'EMAIL_NOT_VERIFIED') {
+                setEmailVerificationModal({ open: true, limit: error.limit || 2 });
+            } else {
+                addToast(`❌ ${error.message}`, 'error');
+            }
         },
     });
 
@@ -302,6 +309,47 @@ export default function Dashboard() {
                 product={priceHistoryModal.product}
                 onClose={() => setPriceHistoryModal({ open: false, product: null })}
             />
+
+            {/* Email Verification Modal */}
+            {emailVerificationModal.open && (
+                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <div className="bg-slate-800 rounded-2xl border border-slate-700 p-8 max-w-md w-full animate-in fade-in zoom-in duration-200">
+                        <div className="text-center">
+                            <div className="w-20 h-20 mx-auto mb-6 bg-amber-500/20 rounded-full flex items-center justify-center">
+                                <span className="text-5xl">✉️</span>
+                            </div>
+                            
+                            <h2 className="text-2xl font-bold text-white mb-3">
+                                Limite Atingido
+                            </h2>
+                            
+                            <p className="text-slate-400 mb-4">
+                                O plano <strong className="text-amber-400">Gratuito</strong> permite monitorar até <strong className="text-amber-400">{emailVerificationModal.limit} produtos</strong>.
+                            </p>
+                            
+                            <p className="text-slate-300 mb-6">
+                                Verifique seu email para ativar sua conta e em breve teremos planos com mais recursos! 🚀
+                            </p>
+
+                            <div className="flex flex-col gap-3">
+                                <Link
+                                    to="/settings"
+                                    className="w-full px-6 py-3 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold transition-all text-center"
+                                >
+                                    Verificar Email →
+                                </Link>
+                                
+                                <button
+                                    onClick={() => setEmailVerificationModal({ open: false, limit: 2 })}
+                                    className="w-full px-6 py-3 rounded-lg bg-slate-700 hover:bg-slate-600 text-white font-semibold transition-all"
+                                >
+                                    Fechar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

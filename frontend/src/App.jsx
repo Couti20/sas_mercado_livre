@@ -6,6 +6,8 @@ import Register from './components/Register';
 import Landing from './components/Landing';
 import PrivateRoute from './components/PrivateRoute';
 import Dashboard from './components/Dashboard';
+import Settings from './components/Settings';
+import VerifyEmail from './components/VerifyEmail';
 import { debugAPI_URL } from './utils/clearStorage';
 import './App.css';
 
@@ -23,6 +25,7 @@ function App() {
           <Route path="/landing" element={<Landing />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
 
           {/* Protected routes */}
           <Route
@@ -30,6 +33,14 @@ function App() {
             element={
               <PrivateRoute>
                 <Dashboard />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <PrivateRoute>
+                <Settings />
               </PrivateRoute>
             }
           />

@@ -1,0 +1,4 @@
+# Pasta de backups - arquivos gerados automaticamente
+# Não commitar backups no git
+*.sql
+*.sql.gz

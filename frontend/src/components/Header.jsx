@@ -94,18 +94,69 @@ function Header({ onRefresh, refreshing, searchTerm, onSearchChange }) {
                 onClick={() => setShowUserMenu(!showUserMenu)}
                 className="px-4 py-2 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold transition-all border border-amber-400/50 hover:border-amber-300 flex items-center gap-2"
               >
-                👤 {user?.email?.split('@')[0] || 'Usuário'}
+                <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-sm">
+                  {user?.fullName?.charAt(0)?.toUpperCase() || '👤'}
+                </div>
+                <span className="hidden sm:inline max-w-[120px] truncate">
+                  {user?.fullName?.split(' ')[0] || 'Usuário'}
+                </span>
+                <svg className={`w-4 h-4 transition-transform ${showUserMenu ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
               </button>
               
               {showUserMenu && (
-                <div className="absolute right-0 mt-2 w-48 bg-slate-800 rounded-lg shadow-xl py-2 z-50 border border-slate-700">
-                  <button
-                    onClick={handleLogout}
-                    className="w-full text-left px-4 py-3 text-red-400 hover:bg-slate-700 hover:text-red-300 transition-colors font-medium"
-                  >
-                    🚪 Logout
-                  </button>
-                </div>
+                <>
+                  {/* Overlay para fechar menu */}
+                  <div 
+                    className="fixed inset-0 z-40" 
+                    onClick={() => setShowUserMenu(false)}
+                  />
+                  
+                  <div className="absolute right-0 mt-2 w-64 bg-slate-800 rounded-xl shadow-2xl py-2 z-50 border border-slate-700">
+                    {/* User Info */}
+                    <div className="px-4 py-3 border-b border-slate-700">
+                      <p className="font-semibold text-white truncate">{user?.fullName || 'Usuário'}</p>
+                      <p className="text-sm text-slate-400 truncate">{user?.email}</p>
+                    </div>
+                    
+                    {/* Menu Options */}
+                    <div className="py-2">
+                      <button
+                        onClick={() => {
+                          setShowUserMenu(false);
+                          navigate('/settings');
+                        }}
+                        className="w-full text-left px-4 py-2.5 text-slate-300 hover:bg-slate-700 hover:text-white transition-colors flex items-center gap-3"
+                      >
+                        <span>⚙️</span>
+                        <span>Configurações</span>
+                      </button>
+                      
+                      <button
+                        onClick={() => {
+                          setShowUserMenu(false);
+                          navigate('/settings#password');
+                        }}
+                        className="w-full text-left px-4 py-2.5 text-slate-300 hover:bg-slate-700 hover:text-white transition-colors flex items-center gap-3"
+                      >
+                        <span>🔐</span>
+                        <span>Alterar Senha</span>
+                      </button>
+                    </div>
+                    
+                    {/* Logout */}
+                    <div className="border-t border-slate-700 pt-2">
+                      <button
+                        onClick={handleLogout}
+                        className="w-full text-left px-4 py-2.5 text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors flex items-center gap-3"
+                      >
+                        <span>🚪</span>
+                        <span>Sair da Conta</span>
+                      </button>
+                    </div>
+                  </div>
+                </>
               )}
             </div>
           </div>

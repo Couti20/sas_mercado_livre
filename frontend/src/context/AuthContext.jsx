@@ -26,6 +26,7 @@ export function AuthProvider({ children }) {
       id: authData.id,
       email: authData.email,
       fullName: authData.fullName,
+      emailVerified: authData.emailVerified || false,
     };
     setToken(authData.token);
     setUser(userData);
@@ -41,8 +42,15 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('user');
   };
 
+  const updateUser = (newData) => {
+    console.log('[INFO] 👤 Atualizando dados do usuário');
+    const updatedUser = { ...user, ...newData };
+    setUser(updatedUser);
+    localStorage.setItem('user', JSON.stringify(updatedUser));
+  };
+
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, token, login, logout, updateUser, isLoading }}>
       {children}
     </AuthContext.Provider>
   );

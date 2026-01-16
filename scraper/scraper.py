@@ -30,8 +30,8 @@ BLOCKED_RESOURCE_TYPES = [
 ]
 
 # Retry configuration
-MAX_RETRIES = 3
-INITIAL_RETRY_DELAY = 1  # seconds
+MAX_RETRIES = 2
+INITIAL_RETRY_DELAY = 0.5  # seconds (era 1s)
 
 # Pool de User-Agents realistas (Chrome Windows atualizado)
 USER_AGENTS = [
@@ -182,34 +182,55 @@ class Scraper:
             print(f"[INFO] [Tentativa {attempt_num + 1}/{MAX_RETRIES}] Navegando para {url}")
             await page.goto(url, timeout=timeout, wait_until="domcontentloaded")
             
-            # DELAY HUMANO: espera aleatória entre 2-5 segundos
-            human_delay = random.randint(2000, 5000)
+            # DELAY HUMANO: espera aleatória entre 1-2 segundos
+            human_delay = random.randint(1000, 2000)
             await page.wait_for_timeout(human_delay)
             
-            # DETECÇÃO DE BLOQUEIO/CAPTCHA
+            # DETECÇÃO DE BLOQUEIO/CAPTCHA - melhorada para evitar falsos positivos
             page_content = await page.content()
-            block_indicators = [
-                "blocked",
+            page_title = await page.title()
+            
+            # Detectar bloqueio REAL baseado no título ou conteúdo específico
+            real_block_indicators = [
                 "captcha",
-                "robot",
-                "unusual traffic",
+                "não é um robô",
+                "verify you are human",
                 "acesso negado",
-                "verificação",
-                "não é um robô"
+                "access denied"
             ]
             
-            for indicator in block_indicators:
-                if indicator.lower() in page_content.lower():
-                    print(f"[WARN] ⚠️ Possível bloqueio detectado: '{indicator}' encontrado na página")
-                    ScraperStats.log_failure(blocked=True)
-                    return None
+            is_blocked = False
+            for indicator in real_block_indicators:
+                # Verificar no título (mais confiável)
+                if indicator.lower() in page_title.lower():
+                    print(f"[WARN] ⚠️ Bloqueio detectado no título: '{indicator}'")
+                    is_blocked = True
+                    break
+                # Verificar no body text (não em atributos/classes)
+                body_text = await page.inner_text("body") if await page.query_selector("body") else ""
+                if indicator.lower() in body_text.lower()[:500]:  # Só nos primeiros 500 chars
+                    print(f"[WARN] ⚠️ Bloqueio detectado no conteúdo: '{indicator}'")
+                    is_blocked = True
+                    break
+            
+            if is_blocked:
+                ScraperStats.log_failure(blocked=True)
+                return None
 
-            # Try multiple selectors for price (more robust)
+            # Try multiple selectors for price (more robust - ordem de prioridade)
             price_selectors = [
+                # Seletores primários (mais estáveis)
                 ".andes-money-amount__fraction",
-                "[data-testid='price-value']",
                 "span.andes-money-amount__fraction",
+                # Seletores de fallback (estrutura)
                 ".ui-pdp-price__second-line .andes-money-amount__fraction",
+                "[data-testid='price-value']",
+                # Seletores semânticos (mais resilientes)
+                "span:has-text('R$')",
+                ".price-tag-fraction",
+                # Seletores de emergência (genéricos)
+                "[class*='price'] span:first-child",
+                "[class*='money'] span:first-child",
             ]
             
             price = None
@@ -238,10 +259,15 @@ class Scraper:
 
             # Try multiple selectors for title (more robust)
             title_selectors = [
+                # Seletores primários
                 "h1.ui-pdp-title",
                 "h1[data-testid='title']",
-                "h1",
                 "[data-testid='product-title']",
+                # Seletores de fallback
+                ".ui-pdp-title",
+                "[class*='title'] h1",
+                # Seletor genérico (último recurso)
+                "h1",
             ]
             
             title = None
@@ -260,10 +286,16 @@ class Scraper:
             # Try multiple selectors for image (more robust)
             image_url = None
             image_selectors = [
+                # Seletores primários
                 "figure.ui-pdp-gallery__figure img",
-                "img.ui-pdp-gallery__figure",
-                "figure img[alt]",
+                ".ui-pdp-gallery__figure img",
                 "[data-testid='gallery-image'] img",
+                # Seletores de fallback
+                "img.ui-pdp-image",
+                "figure img[src*='http']",
+                "figure img[alt]",
+                # Seletor genérico (pega primeira imagem grande)
+                "img[src*='mlstatic']",
             ]
             
             for selector in image_selectors:

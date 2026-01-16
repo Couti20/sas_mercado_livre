@@ -58,8 +58,14 @@ export const addProduct = async (url) => {
     });
 
     if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: 'Failed to add product and could not parse error response.' }));
-        throw new Error(errorData.message || 'Failed to add product.');
+        const errorData = await response.json().catch(() => ({ error: 'Failed to add product.' }));
+        
+        // Create custom error with additional data for email verification limit
+        const error = new Error(errorData.message || errorData.error || 'Failed to add product.');
+        error.code = errorData.code;
+        error.limit = errorData.limit;
+        error.currentCount = errorData.currentCount;
+        throw error;
     }
 
     return response.json();
