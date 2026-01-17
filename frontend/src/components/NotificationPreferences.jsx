@@ -1,5 +1,7 @@
 import { useState } from 'react';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8081';
+
 export default function NotificationPreferences({ product, onClose, onSave }) {
   const [notifyOnDrop, setNotifyOnDrop] = useState(
     product.notifyOnPriceDrop !== false
@@ -9,13 +11,15 @@ export default function NotificationPreferences({ product, onClose, onSave }) {
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
 
   const handleSave = async () => {
     setLoading(true);
     setError('');
+    setSuccess(false);
 
     try {
-      const response = await fetch(`/api/products/${product.id}/notifications`, {
+      const response = await fetch(`${API_URL}/api/products/${product.id}/notifications`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -32,8 +36,14 @@ export default function NotificationPreferences({ product, onClose, onSave }) {
       }
 
       const updatedProduct = await response.json();
-      onSave(updatedProduct);
-      onClose();
+      setSuccess(true);
+      
+      // Aguarda um pouco para mostrar sucesso e fecha
+      setTimeout(() => {
+        onSave(updatedProduct);
+        onClose();
+      }, 800);
+      
     } catch (err) {
       console.error('Erro ao atualizar preferências:', err);
       setError(err.message || 'Erro ao atualizar preferências');
@@ -45,133 +55,186 @@ export default function NotificationPreferences({ product, onClose, onSave }) {
   const bothDisabled = !notifyOnDrop && !notifyOnIncrease;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full animate-in fade-in zoom-in duration-200">
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-slate-800 rounded-2xl shadow-2xl max-w-md w-full border border-slate-700 animate-in fade-in zoom-in duration-200">
+        
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <div className="flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5.951-1.488 5.951 1.488a1 1 0 001.169-1.409l-7-14z" />
-            </svg>
-            <h2 className="text-xl font-semibold text-gray-900">
-              Preferências de Notificação
-            </h2>
+        <div className="flex items-center justify-between p-5 border-b border-slate-700">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-amber-500/20 rounded-xl flex items-center justify-center">
+              <span className="text-xl">🔔</span>
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-white">
+                Configurar Alertas
+              </h2>
+              <p className="text-xs text-slate-400">Escolha quando ser notificado</p>
+            </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 hover:bg-slate-700 rounded-lg transition-colors text-slate-400 hover:text-white"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
 
-        {/* Content */}
-        <div className="p-6 space-y-4">
-          <div className="mb-4">
-            <p className="text-sm text-gray-600 font-medium">
-              Produto: <span className="font-semibold text-gray-900">{product.name}</span>
-            </p>
-          </div>
+        {/* Product Info */}
+        <div className="px-5 py-3 bg-slate-900/50 border-b border-slate-700">
+          <p className="text-xs text-slate-500">Produto</p>
+          <p className="text-sm text-white font-medium line-clamp-1">{product.name}</p>
+          <p className="text-xs text-amber-400 font-semibold mt-1">
+            R$ {product.currentPrice?.toFixed(2)}
+          </p>
+        </div>
 
+        {/* Content */}
+        <div className="p-5 space-y-4">
+          
           {/* Queda de Preço */}
-          <div className="flex items-center justify-between p-4 border border-green-200 bg-green-50 rounded-lg hover:bg-green-100 transition-colors">
-            <div className="flex items-center gap-3 flex-1">
-              <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                <span className="text-lg">🔻</span>
+          <div 
+            onClick={() => setNotifyOnDrop(!notifyOnDrop)}
+            className={`flex items-center justify-between p-4 rounded-xl cursor-pointer transition-all ${
+              notifyOnDrop 
+                ? 'bg-emerald-500/10 border-2 border-emerald-500/50' 
+                : 'bg-slate-700/50 border-2 border-slate-600 hover:border-slate-500'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                notifyOnDrop ? 'bg-emerald-500/20' : 'bg-slate-600'
+              }`}>
+                <span className="text-2xl">📉</span>
               </div>
               <div>
-                <p className="font-medium text-gray-900">Queda de Preço</p>
-                <p className="text-xs text-gray-600">Notificar quando preço diminuir</p>
+                <p className={`font-semibold ${notifyOnDrop ? 'text-emerald-400' : 'text-slate-300'}`}>
+                  Queda de Preço
+                </p>
+                <p className="text-xs text-slate-400">
+                  Avise quando o concorrente baixar
+                </p>
               </div>
             </div>
-            <button
-              onClick={() => setNotifyOnDrop(!notifyOnDrop)}
-              className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${
-                notifyOnDrop ? 'bg-green-600' : 'bg-gray-300'
-              }`}
-            >
-              <span
-                className={`inline-block h-7 w-7 transform rounded-full bg-white transition-transform ${
-                  notifyOnDrop ? 'translate-x-6' : 'translate-x-0.5'
-                }`}
-              />
-            </button>
+            
+            {/* Toggle */}
+            <div className={`relative w-14 h-8 rounded-full transition-colors ${
+              notifyOnDrop ? 'bg-emerald-500' : 'bg-slate-600'
+            }`}>
+              <div className={`absolute top-1 w-6 h-6 bg-white rounded-full shadow-md transition-transform ${
+                notifyOnDrop ? 'translate-x-7' : 'translate-x-1'
+              }`} />
+            </div>
           </div>
 
           {/* Aumento de Preço */}
-          <div className="flex items-center justify-between p-4 border border-red-200 bg-red-50 rounded-lg hover:bg-red-100 transition-colors">
-            <div className="flex items-center gap-3 flex-1">
-              <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
-                <span className="text-lg">📈</span>
+          <div 
+            onClick={() => setNotifyOnIncrease(!notifyOnIncrease)}
+            className={`flex items-center justify-between p-4 rounded-xl cursor-pointer transition-all ${
+              notifyOnIncrease 
+                ? 'bg-red-500/10 border-2 border-red-500/50' 
+                : 'bg-slate-700/50 border-2 border-slate-600 hover:border-slate-500'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                notifyOnIncrease ? 'bg-red-500/20' : 'bg-slate-600'
+              }`}>
+                <span className="text-2xl">📈</span>
               </div>
               <div>
-                <p className="font-medium text-gray-900">Aumento de Preço</p>
-                <p className="text-xs text-gray-600">Notificar quando preço aumentar</p>
+                <p className={`font-semibold ${notifyOnIncrease ? 'text-red-400' : 'text-slate-300'}`}>
+                  Aumento de Preço
+                </p>
+                <p className="text-xs text-slate-400">
+                  Avise quando o concorrente subir
+                </p>
               </div>
             </div>
-            <button
-              onClick={() => setNotifyOnIncrease(!notifyOnIncrease)}
-              className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${
-                notifyOnIncrease ? 'bg-red-600' : 'bg-gray-300'
-              }`}
-            >
-              <span
-                className={`inline-block h-7 w-7 transform rounded-full bg-white transition-transform ${
-                  notifyOnIncrease ? 'translate-x-6' : 'translate-x-0.5'
-                }`}
-              />
-            </button>
+            
+            {/* Toggle */}
+            <div className={`relative w-14 h-8 rounded-full transition-colors ${
+              notifyOnIncrease ? 'bg-red-500' : 'bg-slate-600'
+            }`}>
+              <div className={`absolute top-1 w-6 h-6 bg-white rounded-full shadow-md transition-transform ${
+                notifyOnIncrease ? 'translate-x-7' : 'translate-x-1'
+              }`} />
+            </div>
           </div>
 
-          {/* Warning */}
+          {/* Warning when both disabled */}
           {bothDisabled && (
-            <div className="flex items-start gap-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
-              <p className="text-sm text-yellow-800">
-                Nenhuma notificação ativa. Você não receberá emails sobre mudanças de preço.
+            <div className="flex items-start gap-3 p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl">
+              <span className="text-xl">⚠️</span>
+              <p className="text-sm text-amber-400">
+                Nenhum alerta ativo. Você não receberá notificações sobre este produto.
               </p>
             </div>
           )}
 
-          {/* Error */}
+          {/* Success Message */}
+          {success && (
+            <div className="flex items-center gap-3 p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl">
+              <span className="text-xl">✅</span>
+              <p className="text-sm text-emerald-400 font-medium">
+                Preferências salvas com sucesso!
+              </p>
+            </div>
+          )}
+
+          {/* Error Message */}
           {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-sm text-red-800">{error}</p>
+            <div className="flex items-center gap-3 p-3 bg-red-500/10 border border-red-500/30 rounded-xl">
+              <span className="text-xl">❌</span>
+              <p className="text-sm text-red-400">{error}</p>
             </div>
           )}
 
           {/* Status Summary */}
-          <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-sm text-blue-800">
-              {notifyOnDrop && notifyOnIncrease
-                ? '✅ Receberá notificações para ambas as situações'
-                : notifyOnDrop
-                ? '✅ Receberá apenas notificações de queda de preço'
-                : notifyOnIncrease
-                ? '✅ Receberá apenas notificações de aumento de preço'
-                : '⚠️ Sem notificações ativas'}
-            </p>
+          <div className="p-3 bg-slate-700/50 rounded-xl">
+            <p className="text-xs text-slate-400 mb-1">Como você será notificado:</p>
+            <div className="flex flex-wrap gap-2">
+              <span className="px-2 py-1 bg-slate-600 rounded-md text-xs text-slate-300 flex items-center gap-1">
+                <span>📧</span> Email
+              </span>
+              <span className="px-2 py-1 bg-slate-600 rounded-md text-xs text-slate-300 flex items-center gap-1">
+                <span>🔔</span> Sininho
+              </span>
+            </div>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="flex gap-3 p-6 border-t border-gray-200">
+        <div className="flex gap-3 p-5 border-t border-slate-700">
           <button
             onClick={onClose}
-            className="flex-1 px-4 py-2 text-gray-700 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            disabled={loading}
+            className="flex-1 px-4 py-3 text-slate-300 font-semibold border border-slate-600 rounded-xl hover:bg-slate-700 transition-all disabled:opacity-50"
           >
             Cancelar
           </button>
           <button
             onClick={handleSave}
-            disabled={loading}
-            className="flex-1 px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={loading || success}
+            className="flex-1 px-4 py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
-            {loading ? 'Salvando...' : 'Salvar'}
+            {loading ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                Salvando...
+              </>
+            ) : success ? (
+              <>
+                <span>✅</span>
+                Salvo!
+              </>
+            ) : (
+              <>
+                <span>💾</span>
+                Salvar
+              </>
+            )}
           </button>
         </div>
       </div>
