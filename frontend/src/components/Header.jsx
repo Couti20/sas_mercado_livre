@@ -1,8 +1,9 @@
 import { useContext, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
+import NotificationBell from './NotificationBell';
 
-function Header({ onRefresh, refreshing, searchTerm, onSearchChange }) {
+function Header({ onRefresh, refreshing, searchTerm, onSearchChange, onShowProductHistory }) {
   const { user, logout } = useContext(AuthContext);
   const navigate = useNavigate();
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -25,12 +26,12 @@ function Header({ onRefresh, refreshing, searchTerm, onSearchChange }) {
             className="flex items-center gap-3 cursor-pointer hover:opacity-90 transition-opacity flex-shrink-0"
             onClick={() => navigate('/')}
           >
-            <div className="text-3xl">📊</div>
+            <img src="/logo_monitora.png" alt="MonitoraPreço" className="h-14 w-14 object-contain" />
             <div>
-              <h1 className="text-xl font-bold text-white">
+              <h1 className="text-2xl font-bold text-white">
                 MonitoraPreço
               </h1>
-              <p className="text-xs text-slate-400">
+              <p className="text-sm text-slate-400">
                 Maximize seus lucros
               </p>
             </div>
@@ -68,7 +69,10 @@ function Header({ onRefresh, refreshing, searchTerm, onSearchChange }) {
           </div>
 
           {/* Botões */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            {/* Notification Bell */}
+            <NotificationBell onShowProductHistory={onShowProductHistory} />
+
             <button
               onClick={onRefresh}
               disabled={refreshing}

@@ -14,10 +14,18 @@ CREATE TABLE IF NOT EXISTS users (
   email VARCHAR(255) NOT NULL UNIQUE,
   password VARCHAR(255) NOT NULL,
   full_name VARCHAR(255) NOT NULL,
+  reset_password_token VARCHAR(255),
+  reset_password_token_expires TIMESTAMP NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  INDEX idx_email (email)
+  INDEX idx_email (email),
+  INDEX idx_reset_token (reset_password_token)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Alter existing users table to add reset password columns if they don't exist
+-- Run this if you already have the users table created:
+-- ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_password_token VARCHAR(255);
+-- ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_password_token_expires TIMESTAMP NULL;
 
 -- ====================================
 -- Products Table
@@ -50,9 +58,31 @@ CREATE TABLE IF NOT EXISTS price_history (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ====================================
+-- Notifications Table (para o sininho)
+-- ====================================
+CREATE TABLE IF NOT EXISTS notifications (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  user_id BIGINT NOT NULL,
+  product_id BIGINT,
+  product_name VARCHAR(255),
+  type ENUM('PRICE_DROP', 'PRICE_INCREASE', 'PRODUCT_ADDED', 'SYSTEM') NOT NULL,
+  message TEXT NOT NULL,
+  old_price DECIMAL(10, 2),
+  new_price DECIMAL(10, 2),
+  is_read BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE SET NULL,
+  INDEX idx_user_id (user_id),
+  INDEX idx_is_read (is_read),
+  INDEX idx_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ====================================
 -- Verificar tabelas criadas
 -- ====================================
 SHOW TABLES;
 DESCRIBE users;
 DESCRIBE products;
 DESCRIBE price_history;
+DESCRIBE notifications;

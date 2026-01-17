@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useContext } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 
@@ -10,11 +10,14 @@ import ProductList from './ProductList';
 import Toast from './Toast';
 import ConfirmModal from './ConfirmModal';
 import PriceHistoryModal from './PriceHistoryModal';
+import OnboardingModal from './OnboardingModal';
 import useToasts from '../hooks/useToasts';
+import { AuthContext } from '../context/AuthContext';
 
 export default function Dashboard() {
     const queryClient = useQueryClient();
     const { toasts, addToast, removeToast } = useToasts();
+    const { user } = useContext(AuthContext);
 
     // State for UI controls
     const [searchTerm, setSearchTerm] = useState('');
@@ -24,6 +27,24 @@ export default function Dashboard() {
     const [priceHistoryModal, setPriceHistoryModal] = useState({ open: false, product: null });
     const [lastUpdateTime, setLastUpdateTime] = useState(null);
     const [emailVerificationModal, setEmailVerificationModal] = useState({ open: false, limit: 2 });
+    const [showOnboarding, setShowOnboarding] = useState(false);
+
+    // Check if user is new and should see onboarding
+    useEffect(() => {
+        const onboardingComplete = localStorage.getItem('onboardingComplete');
+        if (!onboardingComplete) {
+            // Small delay to let the page load first
+            const timer = setTimeout(() => {
+                setShowOnboarding(true);
+            }, 500);
+            return () => clearTimeout(timer);
+        }
+    }, []);
+
+    const handleCloseOnboarding = () => {
+        setShowOnboarding(false);
+        localStorage.setItem('onboardingComplete', 'true');
+    };
 
     // --- React Query ---
 
@@ -174,6 +195,7 @@ export default function Dashboard() {
                 refreshing={isRefreshing}
                 searchTerm={searchTerm}
                 onSearchChange={setSearchTerm}
+                onShowProductHistory={(product) => setPriceHistoryModal({ open: true, product })}
             />
             <main className="min-h-[calc(100vh-80px)]">
                 <div className="container mx-auto px-4 py-8 max-w-7xl">
@@ -349,6 +371,14 @@ export default function Dashboard() {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* Onboarding Modal for new users */}
+            {showOnboarding && (
+                <OnboardingModal 
+                    onClose={handleCloseOnboarding}
+                    userName={user?.fullName}
+                />
             )}
         </div>
     );

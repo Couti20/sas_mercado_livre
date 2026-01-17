@@ -2,7 +2,7 @@
  * API service functions for interacting with the product endpoints of the backend.
  */
 
-const getApiUrl = () => import.meta.env.VITE_API_URL || 'http://localhost:8080';
+const getApiUrl = () => import.meta.env.VITE_API_URL || 'http://localhost:8081';
 
 const getAuthToken = () => {
     try {

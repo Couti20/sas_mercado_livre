@@ -18,6 +18,11 @@ build/
 .env
 .env.local
 *.env.local
+backend/.env
+frontend/.env.local
+
+# Application secrets (local development)
+**/application-local.properties
 
 # Database
 *.db

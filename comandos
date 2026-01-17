@@ -13,3 +13,12 @@
   ngrok http 8081
   "C:\Users\Michael\AppData\Local\Microsoft\WinGet\Packages\Ngrok.Ngrok_Microsoft.Winget.Source_8wekyb3d8bbwe\ngrok.exe" http 8081
 
+
+  # Backend (Java)
+cd backend
+mvn test
+
+# Frontend (React)  
+cd frontend
+npm test
+

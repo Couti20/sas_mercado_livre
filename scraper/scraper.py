@@ -31,7 +31,7 @@ BLOCKED_RESOURCE_TYPES = [
 
 # Retry configuration
 MAX_RETRIES = 2
-INITIAL_RETRY_DELAY = 0.5  # seconds (era 1s)
+INITIAL_RETRY_DELAY = 0.3  # seconds (otimizado para velocidade)
 
 # Pool de User-Agents realistas (Chrome Windows atualizado)
 USER_AGENTS = [
@@ -132,7 +132,7 @@ class Scraper:
         await page.route("**/*", lambda route: route.abort() if route.request.resource_type in BLOCKED_RESOURCE_TYPES else route.continue_())
 
     @classmethod
-    async def scrape_mercadolivre(cls, url: str, timeout: int = 10000) -> dict | None:
+    async def scrape_mercadolivre(cls, url: str, timeout: int = 8000) -> dict | None:
         """
         Scrapes product data from a Mercado Livre URL using the persistent browser.
         Optimized for speed with reduced timeouts and faster selectors.
@@ -182,8 +182,8 @@ class Scraper:
             print(f"[INFO] [Tentativa {attempt_num + 1}/{MAX_RETRIES}] Navegando para {url}")
             await page.goto(url, timeout=timeout, wait_until="domcontentloaded")
             
-            # DELAY HUMANO: espera aleatória entre 1-2 segundos
-            human_delay = random.randint(1000, 2000)
+            # DELAY HUMANO: espera de 1-1.5s (equilíbrio entre velocidade e segurança)
+            human_delay = random.randint(1000, 1500)
             await page.wait_for_timeout(human_delay)
             
             # DETECÇÃO DE BLOQUEIO/CAPTCHA - melhorada para evitar falsos positivos
@@ -217,20 +217,12 @@ class Scraper:
                 ScraperStats.log_failure(blocked=True)
                 return None
 
-            # Try multiple selectors for price (more robust - ordem de prioridade)
+            # Try multiple selectors for price (otimizado - ordem de prioridade)
             price_selectors = [
-                # Seletores primários (mais estáveis)
+                # Seletores primários (mais rápidos e estáveis)
                 ".andes-money-amount__fraction",
-                "span.andes-money-amount__fraction",
-                # Seletores de fallback (estrutura)
-                ".ui-pdp-price__second-line .andes-money-amount__fraction",
                 "[data-testid='price-value']",
-                # Seletores semânticos (mais resilientes)
-                "span:has-text('R$')",
                 ".price-tag-fraction",
-                # Seletores de emergência (genéricos)
-                "[class*='price'] span:first-child",
-                "[class*='money'] span:first-child",
             ]
             
             price = None
@@ -240,7 +232,6 @@ class Scraper:
                 try:
                     price_element = await page.query_selector(selector)
                     if price_element:
-                        print(f"[DEBUG] Preço encontrado com seletor: {selector}")
                         break
                 except:
                     continue
@@ -257,16 +248,9 @@ class Scraper:
                 price = normalize_price(price_str)
                 print(f"[DEBUG] Preço extraído: R$ {price}")
 
-            # Try multiple selectors for title (more robust)
+            # Try multiple selectors for title (otimizado)
             title_selectors = [
-                # Seletores primários
                 "h1.ui-pdp-title",
-                "h1[data-testid='title']",
-                "[data-testid='product-title']",
-                # Seletores de fallback
-                ".ui-pdp-title",
-                "[class*='title'] h1",
-                # Seletor genérico (último recurso)
                 "h1",
             ]
             
@@ -278,23 +262,14 @@ class Scraper:
                         title = await title_element.inner_text()
                         title = title.strip()
                         if title and len(title) > 5:  # Sanity check
-                            print(f"[DEBUG] Título encontrado com seletor: {selector}")
                             break
                 except:
                     continue
 
-            # Try multiple selectors for image (more robust)
+            # Try multiple selectors for image (otimizado)
             image_url = None
             image_selectors = [
-                # Seletores primários
                 "figure.ui-pdp-gallery__figure img",
-                ".ui-pdp-gallery__figure img",
-                "[data-testid='gallery-image'] img",
-                # Seletores de fallback
-                "img.ui-pdp-image",
-                "figure img[src*='http']",
-                "figure img[alt]",
-                # Seletor genérico (pega primeira imagem grande)
                 "img[src*='mlstatic']",
             ]
             
@@ -304,17 +279,16 @@ class Scraper:
                     if image_element:
                         image_url = await image_element.get_attribute("src")
                         if image_url:
-                            print(f"[DEBUG] Imagem encontrada com seletor: {selector}")
                             break
                 except:
                     continue
             
             if not title or price is None:
-                print(f"[WARN] Não conseguiu extrair todos os dados. Título: {title}, Preço: {price}")
+                print(f"[WARN] Dados incompletos. Título: {title}, Preço: {price}")
                 ScraperStats.log_failure()
                 return None
 
-            print(f"[INFO] ✅ Scrape bem-sucedido: {title} - R$ {price:.2f}")
+            print(f"[OK] ✅ {title[:40]}... - R$ {price:.2f}")
             ScraperStats.log_success()
             return {"title": title, "price": price, "imageUrl": image_url}
 

@@ -133,6 +133,69 @@ public class AuthController {
     public ResponseEntity<String> health() {
         return ResponseEntity.ok("Auth API is running");
     }
+
+    // ==================== PASSWORD RESET ====================
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@RequestBody ForgotPasswordRequest request) {
+        try {
+            log.info("🔑 Solicitação de recuperação de senha: {}", request.getEmail());
+            
+            userService.initiatePasswordReset(request.getEmail());
+            
+            return ResponseEntity.ok(new SuccessResponse("Código enviado para seu email"));
+            
+        } catch (IllegalArgumentException e) {
+            log.warn("⚠️ Email não encontrado: {}", request.getEmail());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ErrorResponse("Email não encontrado"));
+        } catch (Exception e) {
+            log.error("❌ Erro ao solicitar recuperação: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ErrorResponse("Erro ao enviar código"));
+        }
+    }
+
+    @PostMapping("/verify-reset-code")
+    public ResponseEntity<?> verifyResetCode(@RequestBody VerifyCodeRequest request) {
+        try {
+            log.info("🔑 Verificando código de reset");
+            
+            userService.validateResetCode(request.getEmail(), request.getCode());
+            
+            return ResponseEntity.ok(new SuccessResponse("Código válido"));
+            
+        } catch (IllegalArgumentException e) {
+            log.warn("⚠️ Código inválido: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ErrorResponse(e.getMessage()));
+        }
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@RequestBody ResetPasswordRequest request) {
+        try {
+            log.info("🔑 Resetando senha");
+            
+            if (request.getPassword() == null || request.getPassword().length() < 6) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(new ErrorResponse("Senha deve ter pelo menos 6 caracteres"));
+            }
+            
+            userService.resetPassword(request.getEmail(), request.getCode(), request.getPassword());
+            
+            return ResponseEntity.ok(new SuccessResponse("Senha alterada com sucesso!"));
+            
+        } catch (IllegalArgumentException e) {
+            log.warn("⚠️ Erro ao resetar senha: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ErrorResponse(e.getMessage()));
+        } catch (Exception e) {
+            log.error("❌ Erro ao resetar senha: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ErrorResponse("Erro ao resetar senha"));
+        }
+    }
     
     // Classe interna para respostas de erro
     public static class ErrorResponse {
@@ -141,5 +204,47 @@ public class AuthController {
         public ErrorResponse(String error) {
             this.error = error;
         }
+    }
+
+    // Classe para respostas de sucesso
+    public static class SuccessResponse {
+        public String message;
+        
+        public SuccessResponse(String message) {
+            this.message = message;
+        }
+    }
+
+    // DTO para forgot password
+    public static class ForgotPasswordRequest {
+        private String email;
+        
+        public String getEmail() { return email; }
+        public void setEmail(String email) { this.email = email; }
+    }
+
+    // DTO para verify code
+    public static class VerifyCodeRequest {
+        private String email;
+        private String code;
+        
+        public String getEmail() { return email; }
+        public void setEmail(String email) { this.email = email; }
+        public String getCode() { return code; }
+        public void setCode(String code) { this.code = code; }
+    }
+
+    // DTO para reset password
+    public static class ResetPasswordRequest {
+        private String email;
+        private String code;
+        private String password;
+        
+        public String getEmail() { return email; }
+        public void setEmail(String email) { this.email = email; }
+        public String getCode() { return code; }
+        public void setCode(String code) { this.code = code; }
+        public String getPassword() { return password; }
+        public void setPassword(String password) { this.password = password; }
     }
 }

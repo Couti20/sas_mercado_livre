@@ -4,6 +4,7 @@ import com.mercadolivre.pricemonitor.model.MercadoLivreToken;
 import com.mercadolivre.pricemonitor.repository.MercadoLivreTokenRepository;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -20,6 +21,7 @@ import java.util.Optional;
  * Tokens são persistidos no banco de dados.
  */
 @Service
+@SuppressWarnings("unchecked") // RestTemplate retorna Map raw type - comportamento esperado
 public class MercadoLivreService {
 
     @Value("${mercadolivre.client.id}")

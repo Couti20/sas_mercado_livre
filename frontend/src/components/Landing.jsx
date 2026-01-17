@@ -1,5 +1,5 @@
 import { useContext, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 
 export default function Landing() {
@@ -55,7 +55,7 @@ export default function Landing() {
       {/* Navigation */}
       <nav className="relative z-10 flex justify-between items-center px-6 py-6 backdrop-blur-sm border-b border-slate-700/30">
         <div className="flex items-center gap-3">
-          <div className="text-4xl">📊</div>
+          <img src="/logo_monitora.png" alt="MonitoraPreço" className="h-12 w-12 object-contain" />
           <div className="flex flex-col">
             <h1 className="text-2xl font-bold bg-gradient-to-r from-amber-400 to-orange-400 bg-clip-text text-transparent">
               MonitoraPreço
@@ -428,34 +428,31 @@ export default function Landing() {
             <div>
               <h4 className="text-white font-bold mb-4">Produto</h4>
               <ul className="space-y-2 text-slate-400 text-sm">
-                <li><a href="#" className="hover:text-amber-400 transition">Features</a></li>
-                <li><a href="#" className="hover:text-amber-400 transition">Pricing</a></li>
-                <li><a href="#" className="hover:text-amber-400 transition">Security</a></li>
+                <li><a href="#features" className="hover:text-amber-400 transition">Features</a></li>
+                <li><a href="#pricing" className="hover:text-amber-400 transition">Preços</a></li>
+                <li><a href="#how-it-works" className="hover:text-amber-400 transition">Como Funciona</a></li>
               </ul>
             </div>
             <div>
-              <h4 className="text-white font-bold mb-4">Empresa</h4>
+              <h4 className="text-white font-bold mb-4">Suporte</h4>
               <ul className="space-y-2 text-slate-400 text-sm">
-                <li><a href="#" className="hover:text-amber-400 transition">Sobre</a></li>
-                <li><a href="#" className="hover:text-amber-400 transition">Blog</a></li>
-                <li><a href="#" className="hover:text-amber-400 transition">Contato</a></li>
+                <li><a href="mailto:contato@monitorapreco.com.br" className="hover:text-amber-400 transition">Contato</a></li>
+                <li><a href="#faq" className="hover:text-amber-400 transition">FAQ</a></li>
               </ul>
             </div>
             <div>
               <h4 className="text-white font-bold mb-4">Legal</h4>
               <ul className="space-y-2 text-slate-400 text-sm">
-                <li><a href="#" className="hover:text-amber-400 transition">Privacidade</a></li>
-                <li><a href="#" className="hover:text-amber-400 transition">Termos</a></li>
-                <li><a href="#" className="hover:text-amber-400 transition">Cookies</a></li>
+                <li><Link to="/privacy" className="hover:text-amber-400 transition">Política de Privacidade</Link></li>
+                <li><Link to="/terms" className="hover:text-amber-400 transition">Termos de Uso</Link></li>
               </ul>
             </div>
           </div>
           <div className="border-t border-slate-700 pt-8 flex flex-col md:flex-row justify-between items-center text-slate-400 text-sm">
-            <p>&copy; 2026 MonitoraPreço. Todos os direitos reservados.</p>
+            <p>&copy; {new Date().getFullYear()} MonitoraPreço. Todos os direitos reservados.</p>
             <div className="flex gap-4 mt-4 md:mt-0">
-              <a href="#" className="hover:text-amber-400 transition">Twitter</a>
-              <a href="#" className="hover:text-amber-400 transition">LinkedIn</a>
-              <a href="#" className="hover:text-amber-400 transition">GitHub</a>
+              <Link to="/privacy" className="hover:text-amber-400 transition">Privacidade</Link>
+              <Link to="/terms" className="hover:text-amber-400 transition">Termos</Link>
             </div>
           </div>
         </div>

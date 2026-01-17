@@ -189,7 +189,9 @@ public class EmailService {
      * Send email verification link.
      */
     public void sendVerificationEmail(String userEmail, String fullName, String verificationToken, String frontendUrl) {
-        String verificationLink = frontendUrl + "verify-email?token=" + verificationToken;
+        // Garantir que a URL base termina com /
+        String baseUrl = frontendUrl.endsWith("/") ? frontendUrl : frontendUrl + "/";
+        String verificationLink = baseUrl + "verify-email?token=" + verificationToken;
         
         // Sempre loga o link para debug
         log.info("📧 [DEBUG] Link de verificação: {}", verificationLink);
@@ -240,5 +242,117 @@ public class EmailService {
 
         sendEmail(userEmail, subject, htmlBody);
         log.info("📧 Verification email sent to {}", userEmail);
+    }
+
+    /**
+     * Send password reset email.
+     */
+    public void sendPasswordResetEmail(String userEmail, String fullName, String resetToken, String frontendUrl) {
+        String resetLink = frontendUrl + "reset-password?token=" + resetToken;
+        
+        // Sempre loga o link para debug
+        log.info("🔑 [DEBUG] Link de reset de senha: {}", resetLink);
+
+        String subject = "🔑 Recuperação de Senha - MonitoraPreço";
+        
+        String htmlBody = String.format("""
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <div style="background: linear-gradient(135deg, #1e293b 0%%, #0f172a 100%%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+                    <h1 style="color: #f59e0b; margin: 0; font-size: 28px;">MonitoraPreço</h1>
+                    <p style="color: #94a3b8; margin: 10px 0 0 0;">Recuperação de Senha</p>
+                </div>
+                
+                <div style="background: #f8f9fa; padding: 30px; border: 1px solid #e9ecef;">
+                    <h2 style="color: #333; margin-top: 0;">Olá, %s! 👋</h2>
+                    
+                    <p style="color: #555; font-size: 16px; line-height: 1.6;">
+                        Recebemos uma solicitação para redefinir a senha da sua conta. 
+                        Se foi você quem solicitou, clique no botão abaixo para criar uma nova senha:
+                    </p>
+                    
+                    <div style="text-align: center; margin: 30px 0;">
+                        <a href="%s" style="display: inline-block; background: linear-gradient(135deg, #f59e0b 0%%, #d97706 100%%); color: white; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">
+                            🔑 Redefinir Senha
+                        </a>
+                    </div>
+                    
+                    <p style="color: #888; font-size: 14px;">
+                        Se o botão não funcionar, copie e cole este link no navegador:<br>
+                        <a href="%s" style="color: #f59e0b; word-break: break-all;">%s</a>
+                    </p>
+                    
+                    <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 15px; margin-top: 20px;">
+                        <p style="color: #856404; font-size: 14px; margin: 0;">
+                            ⚠️ <strong>Importante:</strong> Este link expira em <strong>1 hora</strong>.
+                            Se você não solicitou esta recuperação, ignore este email - sua conta está segura.
+                        </p>
+                    </div>
+                </div>
+                
+                <div style="background: #1e293b; color: #94a3b8; padding: 20px; border-radius: 0 0 10px 10px; font-size: 12px; text-align: center;">
+                    <p style="margin: 0;">Por segurança, nunca compartilhe este link com ninguém.</p>
+                    <p style="margin: 10px 0 0 0; color: #64748b;">© 2024 MonitoraPreço - Todos os direitos reservados</p>
+                </div>
+            </div>
+            """,
+            fullName.split(" ")[0],
+            resetLink,
+            resetLink,
+            resetLink
+        );
+
+        sendEmail(userEmail, subject, htmlBody);
+        log.info("🔑 Password reset email sent to {}", userEmail);
+    }
+
+    /**
+     * Send password reset code (6 digits).
+     */
+    public void sendPasswordResetCode(String userEmail, String fullName, String code) {
+        log.info("🔑 [DEBUG] Código de recuperação: {}", code);
+
+        String subject = "🔑 Código de Recuperação - MonitoraPreço";
+        
+        String htmlBody = String.format("""
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <div style="background: linear-gradient(135deg, #1e293b 0%%, #0f172a 100%%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+                    <h1 style="color: #f59e0b; margin: 0; font-size: 28px;">MonitoraPreço</h1>
+                    <p style="color: #94a3b8; margin: 10px 0 0 0;">Recuperação de Senha</p>
+                </div>
+                
+                <div style="background: #f8f9fa; padding: 30px; border: 1px solid #e9ecef;">
+                    <h2 style="color: #333; margin-top: 0;">Olá, %s! 👋</h2>
+                    
+                    <p style="color: #555; font-size: 16px; line-height: 1.6;">
+                        Recebemos uma solicitação para redefinir sua senha. 
+                        Use o código abaixo para continuar:
+                    </p>
+                    
+                    <div style="text-align: center; margin: 30px 0;">
+                        <div style="display: inline-block; background: #1e293b; padding: 20px 40px; border-radius: 10px;">
+                            <span style="font-family: 'Courier New', monospace; font-size: 36px; font-weight: bold; color: #f59e0b; letter-spacing: 8px;">%s</span>
+                        </div>
+                    </div>
+                    
+                    <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 15px; margin-top: 20px;">
+                        <p style="color: #856404; font-size: 14px; margin: 0;">
+                            ⏰ Este código expira em <strong>15 minutos</strong>.<br>
+                            Se você não solicitou, ignore este email.
+                        </p>
+                    </div>
+                </div>
+                
+                <div style="background: #1e293b; color: #94a3b8; padding: 20px; border-radius: 0 0 10px 10px; font-size: 12px; text-align: center;">
+                    <p style="margin: 0;">Por segurança, nunca compartilhe este código.</p>
+                    <p style="margin: 10px 0 0 0; color: #64748b;">© 2024 MonitoraPreço</p>
+                </div>
+            </div>
+            """,
+            fullName.split(" ")[0],
+            code
+        );
+
+        sendEmail(userEmail, subject, htmlBody);
+        log.info("🔑 Password reset code sent to {}", userEmail);
     }
 }

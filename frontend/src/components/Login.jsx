@@ -1,6 +1,6 @@
 import { useState, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import Toast from './Toast';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8081';
@@ -11,18 +11,21 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [toast, setToast] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
-  const [emailError, setEmailError] = useState('');
-  const [passwordError, setPasswordError] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
   const { login } = useContext(AuthContext);
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (!email || !password) {
+      setToast({ type: 'error', message: 'Preencha todos os campos' });
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      console.log('[INFO] ��� Tentando login:', email);
-      
       const response = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -35,13 +38,11 @@ export default function Login() {
         throw new Error(data.error || 'Email ou senha inválidos');
       }
 
-      console.log('[SUCCESS] ✅ Login realizado:', data.email);
       login(data);
-      setToast({ type: 'success', message: 'Bem-vindo de volta! ���' });
+      setToast({ type: 'success', message: 'Login realizado com sucesso!' });
       
-      setTimeout(() => navigate('/dashboard'), 1500);
+      setTimeout(() => navigate('/dashboard'), 1000);
     } catch (error) {
-      console.error('[ERROR] ❌ Erro no login:', error.message);
       setToast({ type: 'error', message: error.message || 'Erro ao fazer login' });
     } finally {
       setIsLoading(false);
@@ -49,143 +50,220 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4 overflow-hidden relative">
+    <div className="min-h-screen flex">
       {toast && <Toast {...toast} onClose={() => setToast(null)} />}
       
-      <div className="absolute top-20 right-1/4 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl opacity-50"></div>
-      <div className="absolute bottom-0 left-1/4 w-96 h-96 bg-orange-500/10 rounded-full blur-3xl opacity-50"></div>
+      {/* Left Side - Form */}
+      <div className="flex-1 flex items-center justify-center p-8 bg-slate-900">
+        <div className="w-full max-w-md">
+          {/* Back Button */}
+          <button 
+            onClick={() => navigate('/')}
+            className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors mb-8 group"
+          >
+            <svg className="w-5 h-5 group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            <span>Voltar ao início</span>
+          </button>
 
-      <div className="w-full max-w-md relative z-10">
-        <button 
-          onClick={() => navigate('/')}
-          className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors mb-6 text-sm"
-        >
-          <span>←</span>
-          <span>Voltar</span>
-        </button>
-
-        <div className="bg-gradient-to-br from-slate-800 to-slate-900 backdrop-blur-md rounded-2xl shadow-2xl p-10 border border-slate-700/50">
-          <div className="text-center mb-10">
-            <div className="inline-block bg-gradient-to-br from-amber-500 to-orange-500 p-3 rounded-xl mb-4 hover:scale-110 transition-transform duration-300">
-              <span className="text-4xl">🔍</span>
+          {/* Logo & Title */}
+          <div className="mb-8">
+            <div className="flex items-center gap-3 mb-6">
+              <img src="/logo_monitora.png" alt="MonitoraPreço" className="h-12 w-12 object-contain" />
+              <span className="text-2xl font-bold text-white">MonitoraPreço</span>
             </div>
             <h1 className="text-3xl font-bold text-white mb-2">
-              Bem-vindo de Volta!
+              Bem-vindo de volta!
             </h1>
-            <p className="text-slate-400 text-sm font-medium">
-              Continue monitorando seus concorrentes
+            <p className="text-slate-400">
+              Entre na sua conta para continuar monitorando
             </p>
           </div>
 
-          <div className="bg-slate-700/30 border border-slate-600/50 rounded-lg p-4 mb-8 space-y-2 text-sm text-slate-300">
-            <div className="flex items-center gap-2">
-              <span className="text-amber-400">✓</span>
-              <span>Monitore preços de concorrentes 24/7</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-amber-400">✓</span>
-              <span>Receba alertas quando eles mudarem preços</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-amber-400">✓</span>
-              <span>Tome decisões estratégicas com dados reais</span>
-            </div>
-          </div>
-
+          {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-5">
+            {/* Email Field */}
             <div>
-              <label className="block text-sm font-semibold text-slate-300 mb-2.5">
-                ��� Email
-              </label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="seu@email.com"
-                required
-                className="w-full px-4 py-3 bg-slate-700/50 border-2 border-slate-600 rounded-xl focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 outline-none transition-all placeholder-slate-500 hover:border-slate-500 text-white"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-slate-300 mb-2.5">
-                ��� Senha
+              <label className="block text-sm font-medium text-slate-300 mb-2">
+                Email
               </label>
               <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <svg className="h-5 w-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
+                  </svg>
+                </div>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="seu@email.com"
+                  className="w-full pl-12 pr-4 py-3.5 bg-slate-800/50 border border-slate-700 rounded-xl focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none transition-all placeholder-slate-500 text-white"
+                />
+              </div>
+            </div>
+
+            {/* Password Field */}
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">
+                Senha
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <svg className="h-5 w-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                </div>
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  required
-                  className="w-full px-4 py-3 bg-slate-700/50 border-2 border-slate-600 rounded-xl focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 outline-none transition-all placeholder-slate-500 hover:border-slate-500 text-white"
+                  className="w-full pl-12 pr-12 py-3.5 bg-slate-800/50 border border-slate-700 rounded-xl focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none transition-all placeholder-slate-500 text-white"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors"
-                  title={showPassword ? 'Ocultar' : 'Mostrar'}
+                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-500 hover:text-slate-300 transition-colors"
                 >
-                  {showPassword ? '���️' : '���️‍���️'}
+                  {showPassword ? (
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                    </svg>
+                  ) : (
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                  )}
                 </button>
               </div>
             </div>
 
-            <div className="flex items-center justify-between text-sm">
-              <label className="flex items-center gap-2 cursor-pointer text-slate-400 hover:text-slate-300 transition-colors">
+            {/* Remember & Forgot */}
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-2 cursor-pointer group">
                 <input
                   type="checkbox"
-                  className="rounded bg-slate-700 border-slate-600 text-amber-500 focus:ring-amber-500/20 cursor-pointer"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="w-4 h-4 rounded bg-slate-700 border-slate-600 text-amber-500 focus:ring-amber-500/20 cursor-pointer"
                 />
-                <span>Manter conectado</span>
+                <span className="text-sm text-slate-400 group-hover:text-slate-300 transition-colors">
+                  Manter conectado
+                </span>
               </label>
-              <button
-                type="button"
-                onClick={() => setToast({ type: 'info', message: 'Recuperação de senha em breve!' })}
-                className="text-amber-400 hover:text-amber-300 transition-colors font-medium"
+              <Link
+                to="/forgot-password"
+                className="text-sm text-amber-500 hover:text-amber-400 transition-colors font-medium"
               >
-                Esqueci a senha
-              </button>
+                Esqueceu a senha?
+              </Link>
             </div>
 
+            {/* Submit Button */}
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 disabled:from-slate-600 disabled:to-slate-700 text-white font-bold py-3 px-4 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-lg hover:shadow-xl hover:shadow-amber-500/50 disabled:shadow-none disabled:cursor-not-allowed"
+              className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 disabled:from-slate-600 disabled:to-slate-700 text-white font-semibold py-3.5 px-4 rounded-xl transition-all duration-200 shadow-lg shadow-amber-500/25 hover:shadow-amber-500/40 disabled:shadow-none disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {isLoading ? (
-                <span className="flex items-center justify-center gap-2">
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  Entrando...
-                </span>
+                <>
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                  <span>Entrando...</span>
+                </>
               ) : (
-                '��� Entrar na Conta'
+                <>
+                  <span>Entrar</span>
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                  </svg>
+                </>
               )}
             </button>
           </form>
 
-          <div className="my-6 flex items-center gap-4">
-            <div className="flex-1 h-px bg-slate-600/50"></div>
-            <span className="text-xs text-slate-500">NOVO AQUI?</span>
-            <div className="flex-1 h-px bg-slate-600/50"></div>
+          {/* Divider */}
+          <div className="flex items-center gap-4 my-8">
+            <div className="flex-1 h-px bg-slate-700"></div>
+            <span className="text-sm text-slate-500">ou</span>
+            <div className="flex-1 h-px bg-slate-700"></div>
           </div>
 
-          <div className="text-center">
-            <p className="text-slate-400 text-sm mb-4">
-              Crie sua conta e comece a lucrar mais
-            </p>
-            <a 
-              href="/register"
-              className="inline-block w-full py-3 border-2 border-slate-600 hover:border-amber-500 text-white hover:text-amber-400 font-bold rounded-xl transition-all duration-300 hover:bg-amber-500/10"
+          {/* Register Link */}
+          <p className="text-center text-slate-400">
+            Não tem uma conta?{' '}
+            <Link 
+              to="/register"
+              className="text-amber-500 hover:text-amber-400 font-semibold transition-colors"
             >
-              ✨ Criar Conta Grátis
-            </a>
-          </div>
+              Criar conta grátis
+            </Link>
+          </p>
+        </div>
+      </div>
+
+      {/* Right Side - Marketing */}
+      <div className="hidden lg:flex flex-1 bg-gradient-to-br from-amber-500 via-orange-500 to-orange-600 p-12 items-center justify-center relative overflow-hidden">
+        {/* Background Pattern */}
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-20 left-20 w-72 h-72 border border-white rounded-full"></div>
+          <div className="absolute bottom-20 right-20 w-96 h-96 border border-white rounded-full"></div>
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] border border-white rounded-full"></div>
         </div>
 
-        <div className="text-center mt-8 text-xs text-slate-500 space-y-2">
-          <p>Sem cartão de crédito necessário</p>
-          <p>Acesso imediato • Cancelável a qualquer momento</p>
+        <div className="relative z-10 max-w-lg text-white">
+          <div className="mb-8">
+            <span className="inline-block px-4 py-2 bg-white/20 backdrop-blur rounded-full text-sm font-medium mb-6">
+              ✨ +2.500 vendedores já usam
+            </span>
+            <h2 className="text-4xl font-bold mb-4">
+              Monitore seus concorrentes no Mercado Livre
+            </h2>
+            <p className="text-lg text-white/80">
+              Saiba exatamente quando eles mudam os preços e tome decisões estratégicas para vender mais.
+            </p>
+          </div>
+
+          {/* Features */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-4 bg-white/10 backdrop-blur rounded-xl p-4">
+              <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="font-semibold">Alertas em tempo real</h3>
+                <p className="text-sm text-white/70">Receba notificações instantâneas de mudanças</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4 bg-white/10 backdrop-blur rounded-xl p-4">
+              <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="font-semibold">Histórico completo</h3>
+                <p className="text-sm text-white/70">Gráficos e análises de tendências</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4 bg-white/10 backdrop-blur rounded-xl p-4">
+              <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="font-semibold">100% anônimo</h3>
+                <p className="text-sm text-white/70">Seus concorrentes nunca saberão</p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

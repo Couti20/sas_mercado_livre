@@ -6,7 +6,6 @@ import com.mercadolivre.pricemonitor.model.User;
 import com.mercadolivre.pricemonitor.repository.PriceHistoryRepository;
 import com.mercadolivre.pricemonitor.repository.ProductRepository;
 import com.mercadolivre.pricemonitor.repository.UserRepository;
-import com.mercadolivre.pricemonitor.service.UserService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -25,9 +24,6 @@ import java.util.Map;
 @RequestMapping("/api/users")
 @CrossOrigin(origins = {"http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173"})
 public class UserController {
-
-    @Autowired
-    private UserService userService;
 
     @Autowired
     private UserRepository userRepository;

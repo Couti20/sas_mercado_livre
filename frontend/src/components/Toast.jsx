@@ -1,4 +1,14 @@
+import { useEffect } from 'react';
+
 function Toast({ message, type, onClose }) {
+  // Auto-close after 4 seconds
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      onClose();
+    }, 4000);
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
   const icons = {
     success: (
       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -18,29 +28,31 @@ function Toast({ message, type, onClose }) {
   }
 
   const colors = {
-    success: 'bg-green-50 border-green-500 text-green-800',
-    error: 'bg-red-50 border-red-500 text-red-800',
-    info: 'bg-blue-50 border-blue-500 text-blue-800'
+    success: 'bg-emerald-900/90 border-emerald-500 text-emerald-100',
+    error: 'bg-red-900/90 border-red-500 text-red-100',
+    info: 'bg-blue-900/90 border-blue-500 text-blue-100'
   }
 
   const iconColors = {
-    success: 'text-green-400',
+    success: 'text-emerald-400',
     error: 'text-red-400',
     info: 'text-blue-400'
   }
 
   return (
-    <div className={`toast-enter flex items-center gap-3 px-4 py-3 rounded-xl border-l-4 shadow-xl backdrop-blur-sm min-w-[300px] max-w-md ${colors[type]}`}>
-      <span className={iconColors[type]}>{icons[type]}</span>
-      <p className="flex-1 text-sm font-medium">{message}</p>
-      <button 
-        onClick={onClose}
-        className="p-1 rounded-lg transition-colors hover:bg-black/10"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-          <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-        </svg>
-      </button>
+    <div className="fixed top-4 right-4 z-50 animate-slide-in">
+      <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border-l-4 shadow-2xl backdrop-blur-sm ${colors[type]}`}>
+        <span className={iconColors[type]}>{icons[type]}</span>
+        <p className="text-sm font-medium">{message}</p>
+        <button 
+          onClick={onClose}
+          className="p-1 rounded-lg transition-colors hover:bg-white/10 ml-2"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+          </svg>
+        </button>
+      </div>
     </div>
   )
 }

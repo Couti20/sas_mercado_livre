@@ -49,6 +49,11 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
      * Check if a product exists for a user.
      */
     boolean existsByUrlAndUserId(String url, Long userId);
+    
+    /**
+     * Count products for a user.
+     */
+    long countByUserId(Long userId);
 
     /**
      * Delete all products for a user.

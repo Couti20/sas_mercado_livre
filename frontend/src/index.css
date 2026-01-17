@@ -86,6 +86,10 @@
   animation: slideOut 0.3s ease-in;
 }
 
+.animate-slide-in {
+  animation: slideIn 0.3s ease-out;
+}
+
 /* Pulse animation for price drop */
 @keyframes pulse-green {
   0%, 100% {

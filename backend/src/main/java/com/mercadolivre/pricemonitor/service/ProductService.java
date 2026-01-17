@@ -31,6 +31,7 @@ public class ProductService {
     private final UserRepository userRepository;
     private final ScraperService scraperService;
     private final EmailService emailService;
+    private final NotificationService notificationService;
 
     public List<Product> getProductsByUserId(Long userId) {
         log.debug("Fetching products for userId: {}", userId);
@@ -58,12 +59,30 @@ public class ProductService {
         log.info("Removed product with ID: {}", id);
     }
 
+    // Limite de produtos para usuários não verificados
+    private static final int UNVERIFIED_USER_PRODUCT_LIMIT = 7;
+
     /**
      * Adds a new product to monitor. Scrapes the initial price immediately using a blocking call.
      * This is acceptable for a single, user-initiated action.
+     * 
+     * Users with unverified email are limited to 7 products.
      */
     @Transactional
     public Product addProduct(String url, Long userId) {
+        // Verificar limite de produtos para usuários não verificados
+        User user = userRepository.findById(userId).orElse(null);
+        if (user != null && !Boolean.TRUE.equals(user.getEmailVerified())) {
+            long productCount = productRepository.countByUserId(userId);
+            if (productCount >= UNVERIFIED_USER_PRODUCT_LIMIT) {
+                log.warn("⚠️ Usuário {} atingiu limite de {} produtos (email não verificado)", userId, UNVERIFIED_USER_PRODUCT_LIMIT);
+                throw new ProductLimitExceededException(
+                    "Verifique seu email para monitorar mais de " + UNVERIFIED_USER_PRODUCT_LIMIT + " produtos",
+                    UNVERIFIED_USER_PRODUCT_LIMIT
+                );
+            }
+        }
+
         if (productRepository.existsByUrlAndUserId(url, userId)) {
             log.warn("⚠️ Product with URL already exists for userId {}: {}", userId, url);
             return productRepository.findByUrlAndUserId(url, userId).orElse(null);
@@ -140,6 +159,8 @@ public class ProductService {
      */
     private void checkPriceAndNotify(Product product, Double oldPrice, Double newPrice) {
         if (oldPrice == null) return;
+        // Only notify if price actually changed
+        if (oldPrice.equals(newPrice)) return;
 
         Optional<User> userOpt = userRepository.findById(product.getUserId());
         if (userOpt.isEmpty()) {
@@ -148,6 +169,21 @@ public class ProductService {
         }
         User user = userOpt.get();
 
+        // Always create in-app notification (bell icon)
+        try {
+            notificationService.createPriceChangeNotification(
+                product.getUserId(),
+                product.getId(),
+                product.getName(),
+                oldPrice,
+                newPrice
+            );
+            log.info("🔔 In-app notification created for product: {}", product.getName());
+        } catch (Exception e) {
+            log.error("Failed to create in-app notification: {}", e.getMessage());
+        }
+
+        // Send email notification based on user preferences
         if (newPrice < oldPrice) {
             logPriceChange("PRICE DROP 🔻", product, oldPrice, newPrice);
             if (product.getNotifyOnPriceDrop()) {
