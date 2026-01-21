@@ -73,9 +73,9 @@ services:
       - SPRING_MAIL_PORT=587
       - SPRING_MAIL_USERNAME=${MAIL_USERNAME}
       - SPRING_MAIL_PASSWORD=${MAIL_PASSWORD}
-      # Telegram Bot
-      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-8217374677:AAERK0ATdveQZEFW91cxr2wSSUE_oIvo-4c}
-      - TELEGRAM_BOT_USERNAME=${TELEGRAM_BOT_USERNAME:-monitoraprecoalert_bot}
+      # Telegram Bot (configure in .env file)
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_BOT_USERNAME=${TELEGRAM_BOT_USERNAME}
       # Frontend URL (for emails)
       - FRONTEND_URL=${FRONTEND_URL:-http://localhost}
       # Scraper
