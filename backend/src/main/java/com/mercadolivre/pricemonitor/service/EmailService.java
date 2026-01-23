@@ -279,12 +279,15 @@ public class EmailService {
      */
     @Async
     public void sendVerificationEmail(String userEmail, String fullName, String verificationToken, String frontendUrl) {
-        // Garantir que a URL base termina com /
-        String baseUrl = frontendUrl.endsWith("/") ? frontendUrl : frontendUrl + "/";
-        String verificationLink = baseUrl + "verify-email?token=" + verificationToken;
-        
-        // Sempre loga o link para debug
-        log.info("📧 [DEBUG] Link de verificação: {}", verificationLink);
+        try {
+            log.info("📧 [ASYNC] Iniciando envio de email de verificação para: {}", userEmail);
+            
+            // Garantir que a URL base termina com /
+            String baseUrl = frontendUrl.endsWith("/") ? frontendUrl : frontendUrl + "/";
+            String verificationLink = baseUrl + "verify-email?token=" + verificationToken;
+            
+            // Sempre loga o link para debug
+            log.info("📧 [DEBUG] Link de verificação: {}", verificationLink);
 
         String subject = "✉️ Confirme seu email - MonitoraPreço";
         
@@ -333,6 +336,10 @@ public class EmailService {
 
         sendEmail(userEmail, subject, htmlBody);
         log.info("📧 Verification email sent to {}", userEmail);
+        
+        } catch (Exception e) {
+            log.error("📧 ❌ [ASYNC] Erro ao enviar email de verificação para {}: {}", userEmail, e.getMessage(), e);
+        }
     }
 
     /**
@@ -341,10 +348,12 @@ public class EmailService {
      */
     @Async
     public void sendPasswordResetEmail(String userEmail, String fullName, String resetToken, String frontendUrl) {
-        String resetLink = frontendUrl + "reset-password?token=" + resetToken;
-        
-        // Sempre loga o link para debug
-        log.info("🔑 [DEBUG] Link de reset de senha: {}", resetLink);
+        try {
+            log.info("🔑 [ASYNC] Iniciando envio de email de reset para: {}", userEmail);
+            String resetLink = frontendUrl + "reset-password?token=" + resetToken;
+            
+            // Sempre loga o link para debug
+            log.info("🔑 [DEBUG] Link de reset de senha: {}", resetLink);
 
         String subject = "🔑 Recuperação de Senha - MonitoraPreço";
         
@@ -396,6 +405,10 @@ public class EmailService {
 
         sendEmail(userEmail, subject, htmlBody);
         log.info("🔑 Password reset email sent to {}", userEmail);
+        
+        } catch (Exception e) {
+            log.error("🔑 ❌ [ASYNC] Erro ao enviar email de reset para {}: {}", userEmail, e.getMessage(), e);
+        }
     }
 
     /**
