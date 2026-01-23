@@ -35,7 +35,6 @@ public class EmailVerificationController {
 
     @Value("${frontend.url:http://localhost:5173/}")
     private String frontendUrl;
-    private String frontendUrl;
 
     /**
      * Verify email with token
