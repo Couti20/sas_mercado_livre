@@ -116,8 +116,11 @@ public class EmailVerificationController {
             userRepository.save(user);
 
             // Send email (usa Resend se configurado, senão Gmail SMTP)
-            if (resendEmailService.isConfigured()) {
-                log.info("📧 Usando Resend API para enviar email");
+            boolean resendConfigured = resendEmailService.isConfigured();
+            log.info("📧 [DEBUG] Resend configurado: {} | Enviando para: {}", resendConfigured, user.getEmail());
+            
+            if (resendConfigured) {
+                log.info("📧 ✅ Usando Resend API para enviar email");
                 resendEmailService.sendVerificationEmail(
                     user.getEmail(),
                     user.getFullName(),
@@ -125,7 +128,7 @@ public class EmailVerificationController {
                     frontendUrl
                 );
             } else {
-                log.info("📧 Usando Gmail SMTP para enviar email");
+                log.warn("📧 ⚠️ Resend NÃO configurado! Usando Gmail SMTP (vai falhar no Railway)");
                 emailService.sendVerificationEmail(
                     user.getEmail(),
                     user.getFullName(),
