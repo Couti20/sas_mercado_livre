@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 /**
@@ -268,7 +269,9 @@ public class EmailService {
 
     /**
      * Send email verification link.
+     * Runs asynchronously to not block user registration.
      */
+    @Async
     public void sendVerificationEmail(String userEmail, String fullName, String verificationToken, String frontendUrl) {
         // Garantir que a URL base termina com /
         String baseUrl = frontendUrl.endsWith("/") ? frontendUrl : frontendUrl + "/";
@@ -328,7 +331,9 @@ public class EmailService {
 
     /**
      * Send password reset email.
+     * Runs asynchronously to not block the request.
      */
+    @Async
     public void sendPasswordResetEmail(String userEmail, String fullName, String resetToken, String frontendUrl) {
         String resetLink = frontendUrl + "reset-password?token=" + resetToken;
         
