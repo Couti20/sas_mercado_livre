@@ -21,7 +21,15 @@ from typing import Optional
 from cache import scrape_cache
 from config import CACHE_ENABLED, get_config_summary
 
-# Importar scraper como método principal
+# Importar API do ML como método principal (sem bloqueios!)
+try:
+    from ml_api import get_product_info, MLApiStats
+    ML_API_AVAILABLE = True
+except ImportError:
+    ML_API_AVAILABLE = False
+    print("[WARN] ML API não disponível!")
+
+# Importar scraper como fallback
 try:
     from scraper import Scraper, ScraperStats
     SCRAPER_AVAILABLE = True
@@ -147,8 +155,9 @@ async def root():
     return {
         "status": "online",
         "service": "Mercado Livre Scraper API",
-        "version": "3.0.0",
-        "mode": "Playwright Scraper",
+        "version": "3.1.0",
+        "mode": "ML API (primary) + Playwright Scraper (fallback)",
+        "ml_api_available": ML_API_AVAILABLE,
         "scraper_available": SCRAPER_AVAILABLE,
         "config": config
     }
@@ -161,12 +170,17 @@ async def get_stats():
     """
     cache_stats = scrape_cache.stats()
     
+    ml_api_stats = None
+    if ML_API_AVAILABLE:
+        ml_api_stats = MLApiStats.get_stats()
+    
     scraper_stats = None
     if SCRAPER_AVAILABLE:
         scraper_stats = ScraperStats.get_stats()
     
     return {
         "cache": cache_stats,
+        "ml_api": ml_api_stats,
         "scraper": scraper_stats
     }
 
@@ -177,8 +191,9 @@ async def health_check():
     Health check detalhado.
     """
     return {
-        "healthy": SCRAPER_AVAILABLE,
-        "mode": "Playwright Scraper",
+        "healthy": ML_API_AVAILABLE or SCRAPER_AVAILABLE,
+        "mode": "ML API (primary) + Playwright Scraper (fallback)",
+        "ml_api_available": ML_API_AVAILABLE,
         "scraper_available": SCRAPER_AVAILABLE
     }
 
@@ -190,7 +205,8 @@ async def scrape_product(request: ScrapeRequest):
     
     Fluxo:
     1. Verifica cache primeiro
-    2. Tenta scraping com Playwright
+    2. Tenta API oficial do ML (mais confiável, sem bloqueios)
+    3. Fallback: scraping com Playwright
     """
     if "mercadolivre" not in request.url and "mercadolibre" not in request.url:
         raise HTTPException(
@@ -209,9 +225,24 @@ async def scrape_product(request: ScrapeRequest):
             print(f"[CACHE] ✅ Hit: {clean_url[:50]}...")
             return ScrapeResponse(**cached)
     
-    # 2. Usar scraping com Playwright
+    # 2. PRIORIDADE: Usar API oficial do ML (sem bloqueios!)
+    if ML_API_AVAILABLE:
+        print(f"[ML_API] 🔍 Buscando via API oficial...")
+        try:
+            result = await get_product_info(clean_url)
+            if result:
+                print(f"[ML_API] ✅ Sucesso! {result.get('title', '')[:40]}...")
+                if CACHE_ENABLED:
+                    scrape_cache.set(clean_url, result)
+                return ScrapeResponse(**result)
+            else:
+                print(f"[ML_API] ⚠️ API não retornou dados, tentando scraper...")
+        except Exception as e:
+            print(f"[ML_API] ❌ Erro: {e}")
+    
+    # 3. Fallback: Usar scraping com Playwright
     if SCRAPER_AVAILABLE:
-        print(f"[SCRAPER] 🔍 Buscando via Playwright...")
+        print(f"[SCRAPER] 🔍 Buscando via Playwright (fallback)...")
         try:
             result = await Scraper.scrape_mercadolivre(clean_url)
             if result:
@@ -222,7 +253,7 @@ async def scrape_product(request: ScrapeRequest):
         except Exception as e:
             print(f"[SCRAPER] ❌ Erro: {e}")
     
-    # Fallback falhou
+    # Todos os métodos falharam
     raise HTTPException(
         status_code=422,
         detail="Não foi possível obter os dados do produto. Verifique se a URL está correta."
