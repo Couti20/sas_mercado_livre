@@ -30,8 +30,8 @@ BLOCKED_RESOURCE_TYPES = [
 ]
 
 # Retry configuration (otimizado para velocidade)
-MAX_RETRIES = 2
-INITIAL_RETRY_DELAY = 0.2  # seconds
+MAX_RETRIES = 3
+INITIAL_RETRY_DELAY = 1  # seconds
 
 # Pool de User-Agents realistas (Chrome Windows atualizado - Jan 2026)
 USER_AGENTS = [
@@ -178,10 +178,10 @@ class Scraper:
             await cls._block_unnecessary_requests(page)
 
             print(f"[INFO] [Tentativa {attempt_num + 1}/{MAX_RETRIES}] Navegando para {url}")
-            await page.goto(url, timeout=timeout, wait_until="networkidle")
+            await page.goto(url, timeout=timeout, wait_until="domcontentloaded")
             
-            # DELAY para página carregar completamente
-            await page.wait_for_timeout(random.randint(800, 1200))
+            # DELAY para página carregar completamente (aumentado para garantir que o JS do ML execute)
+            await page.wait_for_timeout(random.randint(1500, 2500))
             
             # DETECÇÃO DE BLOQUEIO/CAPTCHA - melhorada para evitar falsos positivos
             page_content = await page.content()
@@ -206,135 +206,189 @@ class Scraper:
             # Aguardar um pouco mais para elementos dinâmicos carregarem
             await page.wait_for_timeout(500)
             
-            # ============ EXTRAÇÃO DE PREÇO - Múltiplos seletores ============
-            price = None
-            price_selectors = [
-                # Seletores padrão do ML
-                ".andes-money-amount__fraction",
-                "[class*='price'] .andes-money-amount__fraction",
-                ".ui-pdp-price__second-line .andes-money-amount__fraction",
-                # Seletores alternativos
-                "span[class*='price-tag-fraction']",
-                "[data-testid='price-part'] span:first-child",
-                ".price-tag-fraction",
-                # Seletor mais genérico
-                "[class*='ui-pdp-price'] span[class*='fraction']",
-            ]
-            
-            for selector in price_selectors:
-                try:
-                    price_element = await page.query_selector(selector)
-                    if price_element:
-                        price_int = await price_element.inner_text()
-                        if price_int and price_int.strip():
-                            # Tentar pegar centavos
-                            price_cents = "00"
-                            cents_selectors = [
-                                ".andes-money-amount__cents",
-                                "span[class*='cents']",
-                                ".price-tag-cents",
-                            ]
-                            for cents_sel in cents_selectors:
-                                try:
-                                    cents_elem = await page.query_selector(cents_sel)
-                                    if cents_elem:
-                                        price_cents = await cents_elem.inner_text() or "00"
-                                        break
-                                except:
-                                    continue
-                            
-                            price = normalize_price(f"{price_int},{price_cents}")
-                            if price and price > 0:
-                                print(f"[DEBUG] 💰 Preço encontrado: R$ {price:.2f} (selector: {selector[:30]})")
-                                break
-                except Exception as e:
-                    continue
-
-            # ============ EXTRAÇÃO DE TÍTULO - Múltiplos seletores ============
+            # ============ EXTRAÇÃO VIA JAVASCRIPT PRIMEIRO (mais confiável) ============
+            print("[DEBUG] 🔄 Tentando extração via JavaScript...")
             title = None
-            title_selectors = [
-                "h1.ui-pdp-title",
-                "h1[class*='ui-pdp-title']",
-                ".ui-pdp-header h1",
-                "h1",
-                "[class*='header'] h1",
-                "[data-testid='title'] h1",
-            ]
+            price = None
             
-            for selector in title_selectors:
-                try:
-                    title_element = await page.query_selector(selector)
-                    if title_element:
-                        raw_title = await title_element.inner_text()
-                        if raw_title and raw_title.strip() and len(raw_title.strip()) > 5:
-                            title = raw_title.strip()
-                            print(f"[DEBUG] 📝 Título encontrado: {title[:50]}...")
-                            break
-                except:
-                    continue
-
-            # ============ FALLBACK: Usar JavaScript para extrair dados ============
-            if not title or price is None:
-                print("[DEBUG] 🔄 Tentando extração via JavaScript...")
-                try:
-                    js_data = await page.evaluate("""
-                        () => {
-                            let title = null;
-                            let price = null;
-                            
-                            // Tentar pegar título de várias formas
-                            const h1 = document.querySelector('h1');
-                            if (h1) title = h1.innerText?.trim();
-                            
-                            // Tentar pegar preço do JSON-LD (schema.org)
-                            const scripts = document.querySelectorAll('script[type="application/ld+json"]');
-                            for (const script of scripts) {
-                                try {
-                                    const data = JSON.parse(script.textContent);
-                                    if (data.offers?.price) {
-                                        price = parseFloat(data.offers.price);
-                                        if (!title && data.name) title = data.name;
+            try:
+                js_data = await page.evaluate("""
+                    () => {
+                        let title = null;
+                        let price = null;
+                        
+                        // 1. PRIORIDADE MÁXIMA: JSON-LD Schema.org (dados estruturados)
+                        const scripts = document.querySelectorAll('script[type="application/ld+json"]');
+                        for (const script of scripts) {
+                            try {
+                                const data = JSON.parse(script.textContent);
+                                // Formato direto
+                                if (data['@type'] === 'Product') {
+                                    if (data.name) title = data.name;
+                                    if (data.offers) {
+                                        const offers = Array.isArray(data.offers) ? data.offers[0] : data.offers;
+                                        if (offers.price) price = parseFloat(offers.price);
+                                        else if (offers.lowPrice) price = parseFloat(offers.lowPrice);
                                     }
-                                    if (data['@graph']) {
-                                        for (const item of data['@graph']) {
-                                            if (item.offers?.price) {
-                                                price = parseFloat(item.offers.price);
-                                                if (!title && item.name) title = item.name;
+                                }
+                                // Formato @graph
+                                if (data['@graph']) {
+                                    for (const item of data['@graph']) {
+                                        if (item['@type'] === 'Product') {
+                                            if (item.name) title = item.name;
+                                            if (item.offers) {
+                                                const offers = Array.isArray(item.offers) ? item.offers[0] : item.offers;
+                                                if (offers.price) price = parseFloat(offers.price);
+                                                else if (offers.lowPrice) price = parseFloat(offers.lowPrice);
                                             }
                                         }
                                     }
-                                } catch (e) {}
-                            }
+                                }
+                            } catch (e) {}
+                        }
+                        
+                        // 2. Se não achou no JSON-LD, tentar meta tags
+                        if (!title) {
+                            const ogTitle = document.querySelector('meta[property="og:title"]');
+                            if (ogTitle) title = ogTitle.content;
+                        }
+                        if (!price) {
+                            const metaPrice = document.querySelector('meta[itemprop="price"]');
+                            if (metaPrice) price = parseFloat(metaPrice.content);
+                        }
+                        
+                        // 3. Fallback: extrair do DOM diretamente
+                        if (!title) {
+                            // Tentar h1 com classe específica do ML
+                            const h1 = document.querySelector('h1.ui-pdp-title') || 
+                                       document.querySelector('h1[class*="title"]') ||
+                                       document.querySelector('.ui-pdp-header__title-container h1') ||
+                                       document.querySelector('h1');
+                            if (h1) title = h1.innerText?.trim();
+                        }
+                        
+                        if (!price) {
+                            // Seletores atualizados para 2026
+                            const priceSelectors = [
+                                // Container principal de preço
+                                '.ui-pdp-price__second-line .andes-money-amount',
+                                '.ui-pdp-price .andes-money-amount',
+                                '[class*="price"] .andes-money-amount',
+                                // Fração do preço (parte inteira)
+                                '.andes-money-amount__fraction',
+                                '[class*="price-tag-fraction"]'
+                            ];
                             
-                            // Fallback: buscar preço em qualquer elemento com classe contendo "price"
-                            if (!price) {
-                                const priceElems = document.querySelectorAll('[class*="price"]');
-                                for (const el of priceElems) {
-                                    const text = el.innerText;
-                                    const match = text.match(/R?\\$?\\s*([\\d.,]+)/);
-                                    if (match) {
-                                        const val = parseFloat(match[1].replace('.', '').replace(',', '.'));
-                                        if (val > 0 && val < 1000000) {
-                                            price = val;
-                                            break;
+                            for (const sel of priceSelectors) {
+                                const el = document.querySelector(sel);
+                                if (el) {
+                                    const text = el.innerText || el.textContent;
+                                    // Limpar e converter o preço brasileiro (1.234,56 ou 1234)
+                                    const cleaned = text.replace(/[^\d.,]/g, '');
+                                    if (cleaned) {
+                                        // Verificar formato brasileiro (vírgula para decimais)
+                                        if (cleaned.includes(',')) {
+                                            // Formato: 1.234,56 ou 234,56
+                                            const parts = cleaned.split(',');
+                                            const intPart = parts[0].replace(/\./g, '');
+                                            const decPart = parts[1] || '00';
+                                            const val = parseFloat(intPart + '.' + decPart);
+                                            if (val > 0 && val < 1000000) {
+                                                price = val;
+                                                break;
+                                            }
+                                        } else if (cleaned.includes('.') && cleaned.split('.').length > 2) {
+                                            // Formato: 1.234.567 (milhares separados por ponto)
+                                            const val = parseFloat(cleaned.replace(/\./g, ''));
+                                            if (val > 0 && val < 1000000) {
+                                                price = val;
+                                                break;
+                                            }
+                                        } else {
+                                            // Número simples
+                                            const val = parseFloat(cleaned.replace(/\./g, ''));
+                                            if (val > 0 && val < 1000000) {
+                                                price = val;
+                                                break;
+                                            }
                                         }
                                     }
                                 }
                             }
-                            
-                            return { title, price };
                         }
-                    """)
-                    
-                    if js_data:
-                        if not title and js_data.get('title'):
-                            title = js_data['title']
-                            print(f"[DEBUG] 📝 Título via JS: {title[:50]}...")
-                        if price is None and js_data.get('price'):
-                            price = js_data['price']
-                            print(f"[DEBUG] 💰 Preço via JS: R$ {price:.2f}")
-                except Exception as e:
-                    print(f"[DEBUG] JS extraction failed: {e}")
+                        
+                        // 4. Último fallback: buscar aria-label com preço
+                        if (!price) {
+                            const ariaPrice = document.querySelector('[aria-label*="reais"]');
+                            if (ariaPrice) {
+                                const label = ariaPrice.getAttribute('aria-label');
+                                const match = label.match(/(\d+(?:[.,]\d+)?)\s*reais/i);
+                                if (match) {
+                                    price = parseFloat(match[1].replace(',', '.'));
+                                }
+                            }
+                        }
+                        
+                        return { title, price };
+                    }
+                """)
+                
+                if js_data:
+                    if js_data.get('title'):
+                        title = js_data['title']
+                        print(f"[DEBUG] 📝 Título: {title[:50]}...")
+                    if js_data.get('price'):
+                        price = js_data['price']
+                        print(f"[DEBUG] 💰 Preço: R$ {price:.2f}")
+            except Exception as e:
+                print(f"[DEBUG] JS extraction failed: {e}")
+            
+            # ============ FALLBACK: Seletores CSS diretos (se JS falhou) ============
+            if not title:
+                title_selectors = [
+                    "h1.ui-pdp-title",
+                    "h1[class*='ui-pdp-title']",
+                    ".ui-pdp-header__title-container h1",
+                    ".ui-pdp-header h1",
+                    "h1",
+                ]
+                for selector in title_selectors:
+                    try:
+                        title_element = await page.query_selector(selector)
+                        if title_element:
+                            raw_title = await title_element.inner_text()
+                            if raw_title and raw_title.strip() and len(raw_title.strip()) > 5:
+                                title = raw_title.strip()
+                                print(f"[DEBUG] 📝 Título (CSS): {title[:50]}...")
+                                break
+                    except:
+                        continue
+            
+            if price is None:
+                price_selectors = [
+                    ".andes-money-amount__fraction",
+                    ".ui-pdp-price__second-line .andes-money-amount__fraction",
+                    "[class*='price'] .andes-money-amount__fraction",
+                ]
+                for selector in price_selectors:
+                    try:
+                        price_element = await page.query_selector(selector)
+                        if price_element:
+                            price_int = await price_element.inner_text()
+                            if price_int and price_int.strip():
+                                price_cents = "00"
+                                try:
+                                    cents_elem = await page.query_selector(".andes-money-amount__cents")
+                                    if cents_elem:
+                                        price_cents = await cents_elem.inner_text() or "00"
+                                except:
+                                    pass
+                                price = normalize_price(f"{price_int},{price_cents}")
+                                if price and price > 0:
+                                    print(f"[DEBUG] 💰 Preço (CSS): R$ {price:.2f}")
+                                    break
+                    except:
+                        continue
 
             # Extração de imagem - múltiplos seletores para garantir
             image_url = None
