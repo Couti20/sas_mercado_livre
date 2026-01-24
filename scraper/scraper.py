@@ -212,6 +212,14 @@ class Scraper:
             print(f"[DEBUG] 📄 Título da página: {page_title[:80] if page_title else 'VAZIO'}")
             print(f"[DEBUG] 📄 URL final: {page_url[:80]}")
             
+            # DEBUG: Salvar primeiros 500 chars do body para ver o que tem
+            try:
+                body_text = await page.inner_text("body")
+                if body_text:
+                    print(f"[DEBUG] 📄 Body (primeiros 200 chars): {body_text[:200].replace(chr(10), ' ')}")
+            except:
+                print("[DEBUG] ⚠️ Não foi possível ler body text")
+            
             # Verificar se há redirecionamento para página de erro ou bloqueio
             if "error" in page_url.lower() or "captcha" in page_url.lower():
                 print(f"[WARN] ⚠️ Página de erro/captcha detectada!")
