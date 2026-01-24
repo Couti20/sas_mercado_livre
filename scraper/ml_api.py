@@ -11,6 +11,7 @@ Vantagens sobre scraping:
 
 import httpx
 import re
+import os
 from typing import Optional, Dict, Any
 
 
@@ -88,8 +89,17 @@ async def fetch_product_from_api(item_id: str) -> Optional[Dict[str, Any]]:
     """
     url = f"{ML_API_BASE_URL}/items/{item_id}"
     
+    # Obter token de acesso das variáveis de ambiente
+    access_token = os.getenv("MERCADO_LIVRE_ACCESS_TOKEN")
+    
+    headers = {}
+    if access_token:
+        headers["Authorization"] = f"Bearer {access_token}"
+    else:
+        print("[ML_API] ⚠️ Atenção: 'MERCADO_LIVRE_ACCESS_TOKEN' não definido. A requisição pode falhar.")
+
     try:
-        async with httpx.AsyncClient(timeout=10) as client:
+        async with httpx.AsyncClient(timeout=10, headers=headers) as client:
             response = await client.get(url)
             
             # Rate limit atingido
@@ -98,10 +108,10 @@ async def fetch_product_from_api(item_id: str) -> Optional[Dict[str, Any]]:
                 print(f"[ML_API] ⚠️ Rate limit atingido para {item_id}")
                 return None
             
-            # Produto não encontrado
-            if response.status_code == 404:
+            # Produto não encontrado ou não autorizado
+            if response.status_code == 404 or response.status_code == 403:
                 MLApiStats.record_error()
-                print(f"[ML_API] ❌ Produto não encontrado: {item_id}")
+                print(f"[ML_API] ❌ Produto não encontrado ou acesso negado: {item_id} (Status: {response.status_code})")
                 return None
             
             # Erro na API
