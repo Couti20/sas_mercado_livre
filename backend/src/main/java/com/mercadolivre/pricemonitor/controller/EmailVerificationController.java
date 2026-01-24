@@ -2,6 +2,7 @@ package com.mercadolivre.pricemonitor.controller;
 
 import com.mercadolivre.pricemonitor.model.User;
 import com.mercadolivre.pricemonitor.repository.UserRepository;
+import com.mercadolivre.pricemonitor.service.BrevoEmailService;
 import com.mercadolivre.pricemonitor.service.EmailService;
 import com.mercadolivre.pricemonitor.service.ResendEmailService;
 import lombok.extern.slf4j.Slf4j;
@@ -32,6 +33,9 @@ public class EmailVerificationController {
 
     @Autowired
     private ResendEmailService resendEmailService;
+
+    @Autowired
+    private BrevoEmailService brevoEmailService;
 
     @Value("${frontend.url:http://localhost:5173/}")
     private String frontendUrl;
@@ -114,11 +118,20 @@ public class EmailVerificationController {
             user.setVerificationTokenExpires(LocalDateTime.now().plusHours(24));
             userRepository.save(user);
 
-            // Send email (usa Resend se configurado, senão Gmail SMTP)
+            // Send email - Prioridade: 1) Brevo 2) Resend 3) Gmail SMTP
+            boolean brevoConfigured = brevoEmailService.isConfigured();
             boolean resendConfigured = resendEmailService.isConfigured();
-            log.info("📧 [DEBUG] Resend configurado: {} | Enviando para: {}", resendConfigured, user.getEmail());
+            log.info("📧 [DEBUG] Brevo: {} | Resend: {} | Enviando para: {}", brevoConfigured, resendConfigured, user.getEmail());
             
-            if (resendConfigured) {
+            if (brevoConfigured) {
+                log.info("📧 ✅ Usando Brevo API para enviar email");
+                brevoEmailService.sendVerificationEmail(
+                    user.getEmail(),
+                    user.getFullName(),
+                    token,
+                    frontendUrl
+                );
+            } else if (resendConfigured) {
                 log.info("📧 ✅ Usando Resend API para enviar email");
                 resendEmailService.sendVerificationEmail(
                     user.getEmail(),
@@ -127,7 +140,7 @@ public class EmailVerificationController {
                     frontendUrl
                 );
             } else {
-                log.warn("📧 ⚠️ Resend NÃO configurado! Usando Gmail SMTP (vai falhar no Railway)");
+                log.warn("📧 ⚠️ Nenhum serviço HTTP configurado! Usando Gmail SMTP (vai falhar no Railway)");
                 emailService.sendVerificationEmail(
                     user.getEmail(),
                     user.getFullName(),

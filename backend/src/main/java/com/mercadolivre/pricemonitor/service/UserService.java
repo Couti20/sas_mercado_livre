@@ -32,6 +32,9 @@ public class UserService {
     private ResendEmailService resendEmailService;
 
     @Autowired
+    private BrevoEmailService brevoEmailService;
+
+    @Autowired
     private NotificationRepository notificationRepository;
 
     @Value("${frontend.url:http://localhost:5173/}")
@@ -68,9 +71,17 @@ public class UserService {
             log.error("❌ Erro ao criar notificação de boas-vindas: {}", e.getMessage());
         }
         
-        // Enviar email de verificação (usa Resend se configurado, senão Gmail SMTP)
+        // Enviar email de verificação - Prioridade: 1) Brevo 2) Resend 3) Gmail SMTP
         try {
-            if (resendEmailService.isConfigured()) {
+            if (brevoEmailService.isConfigured()) {
+                log.info("📧 Usando Brevo API para enviar email");
+                brevoEmailService.sendVerificationEmail(
+                    savedUser.getEmail(),
+                    savedUser.getFullName(),
+                    verificationToken,
+                    frontendUrl
+                );
+            } else if (resendEmailService.isConfigured()) {
                 log.info("📧 Usando Resend API para enviar email");
                 resendEmailService.sendVerificationEmail(
                     savedUser.getEmail(),
