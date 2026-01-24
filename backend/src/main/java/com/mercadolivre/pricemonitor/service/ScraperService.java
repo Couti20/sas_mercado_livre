@@ -12,9 +12,12 @@ import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 import reactor.util.retry.Retry;
 
+import java.net.URI;
 import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Service responsible for fetching product data.
@@ -50,15 +53,56 @@ public class ScraperService {
      * @return A CompletableFuture containing the ScrapeResponse, or empty if an error occurs.
      */
     public CompletableFuture<ScrapeResponse> fetchProductData(String productUrl) {
+        // Limpar a URL antes de processar (remove parâmetros de tracking)
+        String cleanUrl = cleanMercadoLivreUrl(productUrl);
+        log.info("🧹 URL limpa: {}", cleanUrl);
+        
         // Tentar usar a API oficial do ML primeiro
         if (mercadoLivreService.hasValidToken()) {
-            log.info("🔑 Usando API oficial do Mercado Livre para: {}", productUrl);
-            return fetchFromMercadoLivreApi(productUrl);
+            log.info("🔑 Usando API oficial do Mercado Livre para: {}", cleanUrl);
+            return fetchFromMercadoLivreApi(cleanUrl);
         }
         
         // Fallback para o scraper Python
-        log.info("🔧 Usando scraper Python para: {}", productUrl);
-        return fetchFromPythonScraper(productUrl);
+        log.info("🔧 Usando scraper Python para: {}", cleanUrl);
+        return fetchFromPythonScraper(cleanUrl);
+    }
+    
+    /**
+     * Limpa a URL do Mercado Livre, removendo parâmetros de tracking e fragmentos.
+     * Também corrige URLs duplicadas.
+     */
+    private String cleanMercadoLivreUrl(String url) {
+        if (url == null || url.isEmpty()) {
+            return url;
+        }
+        
+        try {
+            // Detectar e corrigir URL duplicada (se tiver https:// duas vezes)
+            int firstHttps = url.indexOf("https://");
+            int secondHttps = url.indexOf("https://", firstHttps + 1);
+            if (secondHttps > 0) {
+                url = url.substring(0, secondHttps);
+                log.debug("URL duplicada corrigida");
+            }
+            
+            // Remover fragmento (tudo depois de #)
+            int hashIndex = url.indexOf('#');
+            if (hashIndex > 0) {
+                url = url.substring(0, hashIndex);
+            }
+            
+            // Remover parâmetros de query (tudo depois de ?)
+            int queryIndex = url.indexOf('?');
+            if (queryIndex > 0) {
+                url = url.substring(0, queryIndex);
+            }
+            
+            return url.trim();
+        } catch (Exception e) {
+            log.warn("Erro ao limpar URL: {}", e.getMessage());
+            return url;
+        }
     }
 
     /**
