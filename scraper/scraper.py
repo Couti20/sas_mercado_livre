@@ -206,6 +206,17 @@ class Scraper:
             # Aguardar um pouco mais para elementos dinâmicos carregarem
             await page.wait_for_timeout(500)
             
+            # ============ DEBUG: Ver o que tem na página ============
+            page_title = await page.title()
+            page_url = page.url
+            print(f"[DEBUG] 📄 Título da página: {page_title[:80] if page_title else 'VAZIO'}")
+            print(f"[DEBUG] 📄 URL final: {page_url[:80]}")
+            
+            # Verificar se há redirecionamento para página de erro ou bloqueio
+            if "error" in page_url.lower() or "captcha" in page_url.lower():
+                print(f"[WARN] ⚠️ Página de erro/captcha detectada!")
+                return None
+            
             # ============ EXTRAÇÃO VIA JAVASCRIPT PRIMEIRO (mais confiável) ============
             print("[DEBUG] 🔄 Tentando extração via JavaScript...")
             title = None
@@ -216,6 +227,17 @@ class Scraper:
                     () => {
                         let title = null;
                         let price = null;
+                        let debug = {
+                            jsonLdCount: 0,
+                            h1Count: 0,
+                            priceElements: 0,
+                            pageHtml: document.documentElement.innerHTML.length
+                        };
+                        
+                        // DEBUG: Contar elementos
+                        debug.jsonLdCount = document.querySelectorAll('script[type="application/ld+json"]').length;
+                        debug.h1Count = document.querySelectorAll('h1').length;
+                        debug.priceElements = document.querySelectorAll('[class*="price"]').length;
                         
                         // 1. PRIORIDADE MÁXIMA: JSON-LD Schema.org (dados estruturados)
                         const scripts = document.querySelectorAll('script[type="application/ld+json"]');
@@ -329,11 +351,15 @@ class Scraper:
                             }
                         }
                         
-                        return { title, price };
+                        return { title, price, debug };
                     }
                 """)
                 
                 if js_data:
+                    # Log debug info
+                    debug = js_data.get('debug', {})
+                    print(f"[DEBUG] 📊 JSON-LD scripts: {debug.get('jsonLdCount', 0)}, H1s: {debug.get('h1Count', 0)}, Price elements: {debug.get('priceElements', 0)}, HTML size: {debug.get('pageHtml', 0)}")
+                    
                     if js_data.get('title'):
                         title = js_data['title']
                         print(f"[DEBUG] 📝 Título: {title[:50]}...")
