@@ -11,6 +11,35 @@ from typing import Optional, Dict, Any
 # Módulos locais
 from scraper import token_manager
 
+
+def _mask(s: Optional[str]) -> str:
+    if not s:
+        return "<missing>"
+    if len(s) <= 8:
+        return s[0:2] + "..." + s[-2:]
+    return s[0:4] + "..." + s[-4:]
+
+
+def _print_env_diagnostics():
+    # Mostra se as variáveis críticas estão presentes (sem vazar o segredo inteiro)
+    client_id = os.getenv("MERCADO_LIVRE_APP_ID")
+    client_secret = os.getenv("MERCADO_LIVRE_CLIENT_SECRET")
+    env_refresh = os.getenv("MERCADO_LIVRE_REFRESH_TOKEN")
+    file_access, file_refresh = token_manager.read_tokens()
+
+    print("[ML_API][DIAG] MERCADO_LIVRE_APP_ID:", _mask(client_id))
+    print("[ML_API][DIAG] MERCADO_LIVRE_CLIENT_SECRET:", _mask(client_secret))
+    print("[ML_API][DIAG] MERCADO_LIVRE_REFRESH_TOKEN (env):", _mask(env_refresh))
+    print("[ML_API][DIAG] token_storage.json access_token:", _mask(file_access))
+    print("[ML_API][DIAG] token_storage.json refresh_token:", _mask(file_refresh))
+
+
+# Print diagnostics on import to help debug env/config issues in production
+try:
+    _print_env_diagnostics()
+except Exception:
+    pass
+
 # Configuração da API
 ML_API_BASE_URL = "https://api.mercadolibre.com"
 
