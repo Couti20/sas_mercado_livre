@@ -194,6 +194,16 @@ def extract_product_data(html: str) -> Optional[Dict[str, Any]]:
     if original_price and price and not discount_percent:
         discount_percent = round((1 - price / original_price) * 100)
     
+    # === CORREÇÃO: Se price > originalPrice, então estão invertidos ===
+    if original_price and price and price > original_price:
+        # Trocar os valores
+        temp = price
+        price = original_price
+        original_price = temp
+        # Recalcular desconto
+        if original_price > price:
+            discount_percent = round((1 - price / original_price) * 100)
+    
     # ===== IMAGEM =====
     # Múltiplos seletores para encontrar a imagem
     image_selectors = [

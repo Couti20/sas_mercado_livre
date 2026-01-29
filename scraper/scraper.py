@@ -401,9 +401,24 @@ class Scraper:
                             }
                         }
                         
-                        // Se temos preço original e preço atual, calcular desconto se não encontrado
-                        if (originalPrice && price && !discountPercent) {
-                            discountPercent = Math.round((1 - price / originalPrice) * 100);
+                        // === CORREÇÃO: Se temos originalPrice e ele é MAIOR que price, está correto ===
+                        // === Mas se price > originalPrice, então price é o original e precisamos buscar o promocional ===
+                        if (originalPrice && price) {
+                            if (price > originalPrice) {
+                                // price é na verdade o original, precisamos trocar
+                                const temp = price;
+                                price = originalPrice;
+                                originalPrice = temp;
+                            }
+                            // Calcular desconto
+                            if (!discountPercent && originalPrice > price) {
+                                discountPercent = Math.round((1 - price / originalPrice) * 100);
+                            }
+                        }
+                        
+                        // Se temos desconto mas não temos originalPrice, calcular
+                        if (discountPercent && price && !originalPrice) {
+                            originalPrice = Math.round(price / (1 - discountPercent / 100) * 100) / 100;
                         }
                         
                         if (!price) {
