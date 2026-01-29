@@ -196,12 +196,61 @@ public class EmailVerificationController {
         if (auth == null || auth.getPrincipal() == null) {
             throw new IllegalArgumentException("Usuário não autenticado");
         }
-        return (Long) auth.getPrincipal();
+        return (Long) auth.getPrincipal(); 
     }
 
     private Map<String, String> errorResponse(String message) {
+        
         Map<String, String> error = new HashMap<>();
         error.put("error", message);
         return error;
+    }
+
+    /**
+     * Test endpoint to send a price notification email
+     * GET /api/email/test-price-notification
+     */
+    @GetMapping("/test-price-notification")
+    public ResponseEntity<?> testPriceNotification() {
+        try {
+            Long userId = getCurrentUserId();
+            var userOpt = userRepository.findById(userId);
+            
+            if (userOpt.isEmpty()) {
+                return ResponseEntity.badRequest().body(errorResponse("Usuário não encontrado"));
+            }
+            
+            User user = userOpt.get();
+            String email = user.getEmail();
+            
+            log.info("📧 [TEST] Enviando email de teste de notificação de preço para: {}", email);
+            log.info("📧 [TEST] Brevo configurado: {}", brevoEmailService.isConfigured());
+            
+            // Simular uma queda de preço
+            String productName = "Produto Teste - Monitor de Preços";
+            String productUrl = "https://www.mercadolivre.com.br";
+            Double oldPrice = 199.90;
+            Double newPrice = 149.90;
+            
+            brevoEmailService.sendPriceDropNotification(email, productName, productUrl, oldPrice, newPrice);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Email de teste enviado para: " + email);
+            response.put("brevoConfigured", brevoEmailService.isConfigured());
+            response.put("testData", Map.of(
+                "productName", productName,
+                "oldPrice", oldPrice,
+                "newPrice", newPrice,
+                "savings", oldPrice - newPrice
+            ));
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            log.error("❌ Erro ao enviar email de teste: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(errorResponse("Erro ao enviar email: " + e.getMessage()));
+        }
     }
 }
