@@ -91,8 +91,9 @@ public class ProductController {
             // Check if user email is verified
             User user = userRepository.findById(userId).orElse(null);
             if (user == null) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                        .body(Map.of("error", "Usuário não encontrado"));
+                log.error("❌ User not found for userId: {}", userId);
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .body(Map.of("error", "Erro interno: usuário não encontrado"));
             }
 
             // Check product limit for unverified users (plano gratuito)

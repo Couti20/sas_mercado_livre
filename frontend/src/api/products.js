@@ -48,8 +48,8 @@ const fetchWithAuth = async (url, options = {}) => {
         }
     });
 
-    // Handle expired token
-    if (response.status === 401 || response.status === 403) {
+    // Handle expired token (only 401, not 403 which is used for business rules like product limits)
+    if (response.status === 401) {
         handleUnauthorized();
         throw new Error('Sessão expirada. Faça login novamente.');
     }
