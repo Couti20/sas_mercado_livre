@@ -19,7 +19,7 @@ from pydantic import BaseModel
 from typing import Optional
 
 from cache import scrape_cache
-from config import CACHE_ENABLED, get_config_summary
+from config import CACHE_ENABLED, USE_SCRAPER_API, SCRAPER_API_KEY, get_config_summary
 
 # Importar API do ML como método principal (sem bloqueios!)
 try:
@@ -30,13 +30,25 @@ except ImportError as e:
     ML_API_AVAILABLE = False
     print(f"[WARN] ML API não disponível: {e}", flush=True)
 
-# Importar scraper como fallback
+# Importar ScraperAPI client (proxy com rotação de IP)
+try:
+    import scraperapi_client
+    SCRAPERAPI_AVAILABLE = scraperapi_client.is_available()
+    if SCRAPERAPI_AVAILABLE:
+        print(f"[INFO] ✅ ScraperAPI disponível (USE_SCRAPER_API={USE_SCRAPER_API})", flush=True)
+    else:
+        print("[INFO] ⚠️ ScraperAPI não configurado (SCRAPER_API_KEY vazio)", flush=True)
+except ImportError as e:
+    SCRAPERAPI_AVAILABLE = False
+    print(f"[WARN] ScraperAPI client não disponível: {e}", flush=True)
+
+# Importar scraper Playwright como último fallback
 try:
     from scraper import Scraper, ScraperStats
     SCRAPER_AVAILABLE = True
 except ImportError:
     SCRAPER_AVAILABLE = False
-    print("[ERRO] Scraper não disponível!", flush=True)
+    print("[WARN] Playwright Scraper não disponível!", flush=True)
 
 
 # ========================================
@@ -156,9 +168,11 @@ async def root():
     return {
         "status": "online",
         "service": "Mercado Livre Scraper API",
-        "version": "3.1.0",
-        "mode": "ML API (primary) + Playwright Scraper (fallback)",
+        "version": "3.2.0",
+        "mode": "ML API → ScraperAPI → Playwright",
         "ml_api_available": ML_API_AVAILABLE,
+        "scraperapi_available": SCRAPERAPI_AVAILABLE,
+        "scraperapi_enabled": USE_SCRAPER_API,
         "scraper_available": SCRAPER_AVAILABLE,
         "config": config
     }
@@ -192,9 +206,11 @@ async def health_check():
     Health check detalhado.
     """
     return {
-        "healthy": ML_API_AVAILABLE or SCRAPER_AVAILABLE,
-        "mode": "ML API (primary) + Playwright Scraper (fallback)",
+        "healthy": ML_API_AVAILABLE or SCRAPERAPI_AVAILABLE or SCRAPER_AVAILABLE,
+        "mode": "ML API → ScraperAPI → Playwright",
         "ml_api_available": ML_API_AVAILABLE,
+        "scraperapi_available": SCRAPERAPI_AVAILABLE,
+        "scraperapi_enabled": USE_SCRAPER_API,
         "scraper_available": SCRAPER_AVAILABLE
     }
 
@@ -204,10 +220,11 @@ async def scrape_product(request: ScrapeRequest):
     """
     Busca dados de um produto do Mercado Livre.
     
-    Fluxo:
+    Fluxo de prioridade:
     1. Verifica cache primeiro
     2. Tenta API oficial do ML (mais confiável, sem bloqueios)
-    3. Fallback: scraping com Playwright
+    3. Tenta ScraperAPI (proxy com rotação de IP)
+    4. Fallback: scraping com Playwright (menos confiável)
     """
     if "mercadolivre" not in request.url and "mercadolibre" not in request.url:
         raise HTTPException(
@@ -237,17 +254,32 @@ async def scrape_product(request: ScrapeRequest):
                     scrape_cache.set(clean_url, result)
                 return ScrapeResponse(**result)
             else:
-                print(f"[ML_API] ⚠️ API não retornou dados, tentando scraper...", flush=True)
+                print(f"[ML_API] ⚠️ API não retornou dados, tentando próximo método...", flush=True)
         except Exception as e:
             print(f"[ML_API] ❌ Erro: {e}", flush=True)
     
-    # 3. Fallback: Usar scraping com Playwright
+    # 3. SEGUNDO: ScraperAPI (proxy com rotação de IP - evita bloqueios!)
+    if SCRAPERAPI_AVAILABLE and USE_SCRAPER_API:
+        print(f"[SCRAPERAPI] 🔍 Buscando via ScraperAPI (proxy)...", flush=True)
+        try:
+            result = await scraperapi_client.scrape_product(clean_url)
+            if result:
+                print(f"[SCRAPERAPI] ✅ Sucesso! {result.get('title', '')[:40]}...", flush=True)
+                if CACHE_ENABLED:
+                    scrape_cache.set(clean_url, result)
+                return ScrapeResponse(**result)
+            else:
+                print(f"[SCRAPERAPI] ⚠️ Não retornou dados, tentando Playwright...", flush=True)
+        except Exception as e:
+            print(f"[SCRAPERAPI] ❌ Erro: {e}", flush=True)
+    
+    # 4. ÚLTIMO FALLBACK: Usar scraping com Playwright
     if SCRAPER_AVAILABLE:
         print(f"[SCRAPER] 🔍 Buscando via Playwright (fallback)...", flush=True)
         try:
             result = await Scraper.scrape_mercadolivre(clean_url)
             if result:
-                print(f"[SCRAPER] 📷 ImageURL: {result.get('imageUrl', 'NENHUMA')[:80] if result.get('imageUrl') else 'NENHUMA'}...", flush=True)
+                print(f"[SCRAPER] ✅ Sucesso! {result.get('title', '')[:40]}...", flush=True)
                 if CACHE_ENABLED:
                     scrape_cache.set(clean_url, result)
                 return ScrapeResponse(**result)
