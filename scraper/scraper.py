@@ -246,190 +246,159 @@ class Scraper:
                 js_data = await page.evaluate("""
                     () => {
                         let title = null;
-                        let price = null;
-                        let originalPrice = null;
+                        let price = null;  // Preço que o cliente paga (com desconto se houver)
+                        let originalPrice = null;  // Preço antes do desconto
                         let discountPercent = null;
                         let debug = {
                             jsonLdCount: 0,
                             h1Count: 0,
                             priceElements: 0,
-                            pageHtml: document.documentElement.innerHTML.length
+                            pageHtml: document.documentElement.innerHTML.length,
+                            priceSource: 'none'
                         };
                         
                         debug.jsonLdCount = document.querySelectorAll('script[type="application/ld+json"]').length;
                         debug.h1Count = document.querySelectorAll('h1').length;
                         debug.priceElements = document.querySelectorAll('[class*="price"]').length;
                         
-                        const scripts = document.querySelectorAll('script[type="application/ld+json"]');
-                        for (const script of scripts) {
-                            try {
-                                const data = JSON.parse(script.textContent);
-                                if (data['@type'] === 'Product') {
-                                    if (data.name) title = data.name;
-                                    if (data.offers) {
-                                        const offers = Array.isArray(data.offers) ? data.offers[0] : data.offers;
-                                        if (offers.price) price = parseFloat(offers.price);
-                                        else if (offers.lowPrice) price = parseFloat(offers.lowPrice);
-                                    }
-                                }
-                                if (data['@graph']) {
-                                    for (const item of data['@graph']) {
-                                        if (item['@type'] === 'Product') {
-                                            if (item.name) title = item.name;
-                                            if (item.offers) {
-                                                const offers = Array.isArray(item.offers) ? item.offers[0] : item.offers;
-                                                if (offers.price) price = parseFloat(offers.price);
-                                                else if (offers.lowPrice) price = parseFloat(offers.lowPrice);
-                                            }
-                                        }
-                                    }
-                                }
-                            } catch (e) {}
+                        // Função auxiliar para parsear preço brasileiro
+                        function parsePrice(text) {
+                            if (!text) return null;
+                            const cleaned = text.replace(/[^\d.,]/g, '');
+                            if (!cleaned) return null;
+                            
+                            // Formato brasileiro: 3.893,68 ou 3893,68
+                            if (cleaned.includes(',')) {
+                                const parts = cleaned.split(',');
+                                const intPart = parts[0].replace(/\./g, '');
+                                const decPart = parts[1] || '00';
+                                const val = parseFloat(intPart + '.' + decPart);
+                                return (val > 0 && val < 10000000) ? val : null;
+                            }
+                            // Sem centavos: 3.893 ou 3893
+                            const val = parseFloat(cleaned.replace(/\./g, ''));
+                            return (val > 0 && val < 10000000) ? val : null;
                         }
                         
-                        if (!title) {
-                            const ogTitle = document.querySelector('meta[property="og:title"]');
-                            if (ogTitle) title = ogTitle.content;
-                        }
-                        if (!price) {
-                            const metaPrice = document.querySelector('meta[itemprop="price"]');
-                            if (metaPrice) price = parseFloat(metaPrice.content);
-                        }
+                        // === PASSO 1: Buscar título ===
+                        const ogTitle = document.querySelector('meta[property="og:title"]');
+                        if (ogTitle) title = ogTitle.content;
                         
                         if (!title) {
                             const h1 = document.querySelector('h1.ui-pdp-title') || 
                                        document.querySelector('h1[class*="title"]') ||
-                                       document.querySelector('.ui-pdp-header__title-container h1') ||
                                        document.querySelector('h1');
                             if (h1) title = h1.innerText?.trim();
                         }
                         
-                        // === CAPTURAR PREÇO ORIGINAL (riscado) E DESCONTO ===
-                        // Seletores para preço original (antes do desconto)
-                        const originalPriceSelectors = [
-                            '.ui-pdp-price__original-value .andes-money-amount__fraction',
-                            '.ui-pdp-price__second-line--crossed .andes-money-amount__fraction',
-                            's.andes-money-amount .andes-money-amount__fraction',
-                            '[class*="crossed"] .andes-money-amount__fraction',
-                            '.ui-pdp-price__original-value',
-                            '.andes-money-amount--previous .andes-money-amount__fraction'
-                        ];
-                        
-                        for (const sel of originalPriceSelectors) {
-                            const el = document.querySelector(sel);
-                            if (el) {
-                                const text = el.innerText || el.textContent;
-                                const cleaned = text.replace(/[^\d.,]/g, '');
-                                if (cleaned) {
-                                    let val;
-                                    if (cleaned.includes(',')) {
-                                        const parts = cleaned.split(',');
-                                        const intPart = parts[0].replace(/\./g, '');
-                                        const decPart = parts[1] || '00';
-                                        val = parseFloat(intPart + '.' + decPart);
-                                    } else {
-                                        val = parseFloat(cleaned.replace(/\./g, ''));
-                                    }
-                                    if (val > 0 && val < 1000000) {
-                                        originalPrice = val;
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                        
-                        // Seletores para percentual de desconto
+                        // === PASSO 2: Buscar percentual de desconto PRIMEIRO ===
                         const discountSelectors = [
                             '.ui-pdp-price__second-line__label',
                             '.andes-money-amount__discount',
-                            '[class*="discount"]',
-                            '.ui-pdp-price__subtitles .ui-pdp-price__subtitle'
+                            '[class*="discount"]'
                         ];
                         
                         for (const sel of discountSelectors) {
                             const el = document.querySelector(sel);
                             if (el) {
                                 const text = el.innerText || el.textContent;
-                                const match = text.match(/(\d+)\s*%\s*OFF/i);
+                                const match = text.match(/(\d+)\s*%/i);
                                 if (match) {
                                     discountPercent = parseInt(match[1]);
+                                    debug.priceSource = 'discount_label';
                                     break;
                                 }
                             }
                         }
-                        // === FIM CAPTURA DESCONTO ===
                         
+                        // === PASSO 3: Buscar preço PROMOCIONAL (o que o cliente paga) ===
+                        // Estes seletores buscam o preço GRANDE que aparece na página
+                        const currentPriceSelectors = [
+                            '.ui-pdp-price__second-line:not(.ui-pdp-price__second-line--crossed) .andes-money-amount__fraction',
+                            '.ui-pdp-price__main-container .andes-money-amount__fraction',
+                            '.ui-pdp-price .andes-money-amount:not(.andes-money-amount--previous) .andes-money-amount__fraction'
+                        ];
+                        
+                        for (const sel of currentPriceSelectors) {
+                            const el = document.querySelector(sel);
+                            if (el) {
+                                const fraction = el.innerText || el.textContent;
+                                // Buscar centavos também
+                                let cents = '00';
+                                const centsEl = el.parentElement?.querySelector('.andes-money-amount__cents');
+                                if (centsEl) {
+                                    cents = centsEl.innerText || centsEl.textContent || '00';
+                                }
+                                const fullPrice = fraction + ',' + cents.padStart(2, '0');
+                                const val = parsePrice(fullPrice);
+                                if (val) {
+                                    price = val;
+                                    debug.priceSource = sel;
+                                    break;
+                                }
+                            }
+                        }
+                        
+                        // === PASSO 4: Buscar preço ORIGINAL (riscado) ===
+                        const originalPriceSelectors = [
+                            '.ui-pdp-price__original-value .andes-money-amount__fraction',
+                            '.ui-pdp-price__second-line--crossed .andes-money-amount__fraction',
+                            's.andes-money-amount .andes-money-amount__fraction',
+                            '.andes-money-amount--previous .andes-money-amount__fraction',
+                            '[class*="crossed"] .andes-money-amount__fraction'
+                        ];
+                        
+                        for (const sel of originalPriceSelectors) {
+                            const el = document.querySelector(sel);
+                            if (el) {
+                                const fraction = el.innerText || el.textContent;
+                                let cents = '00';
+                                const centsEl = el.parentElement?.querySelector('.andes-money-amount__cents');
+                                if (centsEl) {
+                                    cents = centsEl.innerText || centsEl.textContent || '00';
+                                }
+                                const fullPrice = fraction + ',' + cents.padStart(2, '0');
+                                const val = parsePrice(fullPrice);
+                                if (val && val > 0) {
+                                    originalPrice = val;
+                                    break;
+                                }
+                            }
+                        }
+                        
+                        // === PASSO 5: Fallback para JSON-LD se não encontrou preço ===
                         if (!price) {
-                            const priceSelectors = [
-                                '.ui-pdp-price__second-line .andes-money-amount',
-                                '.ui-pdp-price .andes-money-amount',
-                                '[class*="price"] .andes-money-amount',
-                                '.andes-money-amount__fraction',
-                                '[class*="price-tag-fraction"]'
-                            ];
-                            
-                            for (const sel of priceSelectors) {
-                                const el = document.querySelector(sel);
-                                if (el) {
-                                    const text = el.innerText || el.textContent;
-                                    const cleaned = text.replace(/[^\d.,]/g, '');
-                                    if (cleaned) {
-                                        if (cleaned.includes(',')) {
-                                            const parts = cleaned.split(',');
-                                            const intPart = parts[0].replace(/\./g, '');
-                                            const decPart = parts[1] || '00';
-                                            const val = parseFloat(intPart + '.' + decPart);
-                                            if (val > 0 && val < 1000000) {
-                                                price = val;
-                                                break;
-                                            }
-                                        } else if (cleaned.includes('.') && cleaned.split('.').length > 2) {
-                                            const val = parseFloat(cleaned.replace(/\./g, ''));
-                                            if (val > 0 && val < 1000000) {
-                                                price = val;
-                                                break;
-                                            }
-                                        } else {
-                                            const val = parseFloat(cleaned.replace(/\./g, ''));
-                                            if (val > 0 && val < 1000000) {
-                                                price = val;
-                                                break;
-                                            }
+                            const scripts = document.querySelectorAll('script[type="application/ld+json"]');
+                            for (const script of scripts) {
+                                try {
+                                    const data = JSON.parse(script.textContent);
+                                    if (data['@type'] === 'Product' && data.offers) {
+                                        const offers = Array.isArray(data.offers) ? data.offers[0] : data.offers;
+                                        if (offers.price) {
+                                            price = parseFloat(offers.price);
+                                            debug.priceSource = 'json-ld';
                                         }
                                     }
-                                }
+                                } catch (e) {}
                             }
                         }
                         
-                        // === CORREÇÃO: Se temos originalPrice e ele é MAIOR que price, está correto ===
-                        // === Mas se price > originalPrice, então price é o original e precisamos buscar o promocional ===
-                        if (originalPrice && price) {
-                            if (price > originalPrice) {
-                                // price é na verdade o original, precisamos trocar
-                                const temp = price;
-                                price = originalPrice;
-                                originalPrice = temp;
-                            }
-                            // Calcular desconto
-                            if (!discountPercent && originalPrice > price) {
-                                discountPercent = Math.round((1 - price / originalPrice) * 100);
-                            }
+                        // === PASSO 6: Correções e validações ===
+                        // Se originalPrice existe e é MENOR que price, estão invertidos
+                        if (originalPrice && price && originalPrice < price) {
+                            const temp = price;
+                            price = originalPrice;
+                            originalPrice = temp;
                         }
                         
-                        // Se temos desconto mas não temos originalPrice, calcular
+                        // Se temos originalPrice e price, calcular desconto se não temos
+                        if (originalPrice && price && !discountPercent && originalPrice > price) {
+                            discountPercent = Math.round((1 - price / originalPrice) * 100);
+                        }
+                        
+                        // Se só temos desconto e price (sem originalPrice), calcular original
                         if (discountPercent && price && !originalPrice) {
                             originalPrice = Math.round(price / (1 - discountPercent / 100) * 100) / 100;
-                        }
-                        
-                        if (!price) {
-                            const ariaPrice = document.querySelector('[aria-label*="reais"]');
-                            if (ariaPrice) {
-                                const label = ariaPrice.getAttribute('aria-label');
-                                const match = label.match(/(\d+(?:[.,]\d+)?)\s*reais/i);
-                                if (match) {
-                                    price = parseFloat(match[1].replace(',', '.'));
-                                }
-                            }
                         }
                         
                         return { title, price, originalPrice, discountPercent, debug };
@@ -438,7 +407,7 @@ class Scraper:
                 
                 if js_data:
                     debug = js_data.get('debug', {})
-                    print(f"[DEBUG] 📊 JSON-LD scripts: {debug.get('jsonLdCount', 0)}, H1s: {debug.get('h1Count', 0)}, Price elements: {debug.get('priceElements', 0)}, HTML size: {debug.get('pageHtml', 0)}", flush=True)
+                    print(f"[DEBUG] 📊 JSON-LD scripts: {debug.get('jsonLdCount', 0)}, H1s: {debug.get('h1Count', 0)}, Price elements: {debug.get('priceElements', 0)}, priceSource: {debug.get('priceSource', 'N/A')}", flush=True)
                     
                     if js_data.get('title'):
                         title = js_data['title']
