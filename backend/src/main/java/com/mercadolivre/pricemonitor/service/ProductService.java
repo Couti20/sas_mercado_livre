@@ -205,7 +205,10 @@ public class ProductService {
             priceChanged = Math.abs(oldPrice - newPrice) >= 0.01;
         }
 
-        product.setLastPrice(oldPrice);
+        // Só atualiza lastPrice quando o preço realmente muda (para manter a variação visível)
+        if (priceChanged) {
+            product.setLastPrice(oldPrice);
+        }
         product.setCurrentPrice(newPrice);
         product.setLastCheckedAt(LocalDateTime.now());
         product.setName(scrapeData.getTitle());
