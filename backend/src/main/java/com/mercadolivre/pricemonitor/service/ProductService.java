@@ -126,6 +126,9 @@ public class ProductService {
      * 
      * Users with unverified email are limited to 4 products.
      * After email verification, users can add unlimited products.
+     * 
+     * OPTIMIZED: Product is saved immediately with PENDING status,
+     * scraping happens in background for instant user feedback.
      */
     @Transactional
     public Product addProduct(String url, Long userId) {
@@ -147,36 +150,102 @@ public class ProductService {
             return productRepository.findByUrlAndUserId(url, userId).orElse(null);
         }
 
+        // Extrair nome temporário da URL para feedback rápido
+        String tempName = extractProductNameFromUrl(url);
+
+        // Criar produto imediatamente com status PENDING
+        Product product = new Product();
+        product.setName(tempName);
+        product.setUrl(url);
+        product.setImageUrl(null); // Will be filled by scraper
+        product.setCurrentPrice(null); // Will be filled by scraper
+        product.setLastPrice(null);
+        product.setLastCheckedAt(LocalDateTime.now());
+        product.setUserId(userId);
+        product.setStatus("PENDING");
+
+        Product saved = productRepository.save(product);
+        log.info("⏳ Product added with PENDING status for userId {}: {}", userId, url);
+
+        // Disparar scraping em background (não bloqueia!)
+        scrapeProductInBackground(saved.getId(), url);
+
+        return saved;
+    }
+
+    /**
+     * Extract a temporary product name from URL for immediate feedback.
+     */
+    private String extractProductNameFromUrl(String url) {
         try {
-            // Block and wait for the single scrape result.
+            // Try to extract MLB ID or product slug from URL
+            // Example: https://www.mercadolivre.com.br/produto-xyz-MLB12345
+            String[] parts = url.split("/");
+            for (String part : parts) {
+                if (part.contains("MLB") || part.length() > 20) {
+                    // Clean up the slug
+                    return part.replace("-", " ")
+                              .replaceAll("MLB\\d+", "")
+                              .trim();
+                }
+            }
+        } catch (Exception e) {
+            // Ignore
+        }
+        return "Carregando produto...";
+    }
+
+    /**
+     * Scrape product data in background thread (non-blocking).
+     */
+    @Async
+    public void scrapeProductInBackground(Long productId, String url) {
+        try {
+            log.info("🔄 Starting background scrape for product ID {}: {}", productId, url);
+            
             ScrapeResponse scrapeData = scraperService.fetchProductData(url).get();
 
-            if (scrapeData == null || !scrapeData.isValid()) {
-                log.error("❌ Could not scrape valid product data for URL: {}", url);
-                return null;
+            // Buscar produto do banco (pode ter sido deletado enquanto aguardava)
+            Product product = productRepository.findById(productId).orElse(null);
+            if (product == null) {
+                log.warn("⚠️ Product {} was deleted while scraping", productId);
+                return;
             }
 
-            Product product = new Product();
+            if (scrapeData == null || !scrapeData.isValid()) {
+                log.error("❌ Background scrape failed for product {}: invalid data", productId);
+                product.setStatus("ERROR");
+                product.setName("Erro ao carregar - " + product.getName());
+                productRepository.save(product);
+                return;
+            }
+
+            // Atualizar com dados do scraper
             product.setName(scrapeData.getTitle());
-            product.setUrl(url);
             product.setImageUrl(scrapeData.getImageUrl());
             product.setCurrentPrice(scrapeData.getPrice());
-            product.setLastPrice(null);
             product.setLastCheckedAt(LocalDateTime.now());
-            product.setUserId(userId);
+            product.setStatus("ACTIVE");
+            productRepository.save(product);
 
-            Product saved = productRepository.save(product);
-
-            PriceHistory history = new PriceHistory(saved, scrapeData.getPrice());
+            // Salvar primeiro registro no histórico
+            PriceHistory history = new PriceHistory(product, scrapeData.getPrice());
             priceHistoryRepository.save(history);
 
-            log.info("✅ Added new product for userId {}: '{}' at R$ {}", userId, saved.getName(), saved.getCurrentPrice());
-            return saved;
+            log.info("✅ Background scrape completed for product {}: '{}' at R$ {}", 
+                productId, product.getName(), product.getCurrentPrice());
 
-        } catch (InterruptedException | ExecutionException e) {
-            log.error("❌ Failed to scrape product data for URL {} during addProduct: {}", url, e.getMessage());
-            Thread.currentThread().interrupt(); // Restore interruption status
-            return null;
+        } catch (Exception e) {
+            log.error("❌ Background scrape error for product {}: {}", productId, e.getMessage());
+            try {
+                Product product = productRepository.findById(productId).orElse(null);
+                if (product != null) {
+                    product.setStatus("ERROR");
+                    productRepository.save(product);
+                }
+            } catch (Exception ex) {
+                log.error("Failed to update product status: {}", ex.getMessage());
+            }
         }
     }
 

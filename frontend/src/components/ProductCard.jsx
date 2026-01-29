@@ -8,6 +8,10 @@ export default function ProductCard({ product, onDelete, onShowHistory, onUpdate
   const [imageLoaded, setImageLoaded] = useState(false)
   const [imageError, setImageError] = useState(false)
 
+  // Check if product is still loading (PENDING status)
+  const isPending = product.status === 'PENDING'
+  const isError = product.status === 'ERROR'
+
   const priceChange = product.lastPrice 
     ? ((product.currentPrice - product.lastPrice) / product.lastPrice * 100).toFixed(1)
     : 0
@@ -16,6 +20,82 @@ export default function ProductCard({ product, onDelete, onShowHistory, onUpdate
 
   // Placeholder image when product doesn't have imageUrl or it fails to load
   const placeholderImage = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='200' viewBox='0 0 300 200'%3E%3Crect fill='%23f1f5f9' width='300' height='200'/%3E%3Ctext fill='%2394a3b8' font-family='sans-serif' font-size='14' x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle'%3E📦 Sem imagem%3C/text%3E%3C/svg%3E"
+
+  // Special card for PENDING products
+  if (isPending) {
+    return (
+      <div className="rounded-2xl shadow-lg bg-white border-2 border-amber-300 overflow-hidden animate-pulse">
+        {/* Loading Image Placeholder */}
+        <div className="aspect-[16/10] bg-gradient-to-br from-amber-50 to-orange-50 flex items-center justify-center">
+          <div className="text-center">
+            <div className="text-5xl mb-2 animate-bounce">⏳</div>
+            <p className="text-amber-600 font-semibold text-sm">Carregando...</p>
+          </div>
+        </div>
+        
+        {/* Card Content */}
+        <div className="p-4">
+          <h3 className="text-sm font-bold text-slate-600 line-clamp-2 mb-3">
+            {product.name || 'Buscando informações do produto...'}
+          </h3>
+          
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4">
+            <div className="flex items-center gap-2 text-amber-700">
+              <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <span className="text-xs font-medium">Obtendo preço...</span>
+            </div>
+          </div>
+
+          {/* Delete button only */}
+          <button
+            onClick={() => onDelete(product.id, product.name)}
+            className="w-full py-2 px-4 rounded-lg text-xs font-bold bg-red-100 text-red-600 hover:bg-red-200 transition-colors"
+          >
+            🗑️ Cancelar
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // Special card for ERROR products
+  if (isError) {
+    return (
+      <div className="rounded-2xl shadow-lg bg-white border-2 border-red-300 overflow-hidden">
+        {/* Error Image Placeholder */}
+        <div className="aspect-[16/10] bg-gradient-to-br from-red-50 to-orange-50 flex items-center justify-center">
+          <div className="text-center">
+            <div className="text-5xl mb-2">❌</div>
+            <p className="text-red-600 font-semibold text-sm">Erro ao carregar</p>
+          </div>
+        </div>
+        
+        {/* Card Content */}
+        <div className="p-4">
+          <h3 className="text-sm font-bold text-slate-600 line-clamp-2 mb-3">
+            {product.name}
+          </h3>
+          
+          <div className="bg-red-50 border border-red-200 rounded-xl p-3 mb-4">
+            <p className="text-xs text-red-600">
+              Não foi possível obter os dados deste produto. Verifique se a URL está correta.
+            </p>
+          </div>
+
+          {/* Delete button only */}
+          <button
+            onClick={() => onDelete(product.id, product.name)}
+            className="w-full py-2 px-4 rounded-lg text-xs font-bold bg-red-500 text-white hover:bg-red-600 transition-colors"
+          >
+            🗑️ Remover
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <>

@@ -64,6 +64,12 @@ public class Product {
     @Column(name = "notify_on_price_increase")
     private Boolean notifyOnPriceIncrease = true;
 
+    /**
+     * Product status: PENDING (scraping in progress), ACTIVE (scraped successfully), ERROR (scraping failed)
+     */
+    @Column(name = "status")
+    private String status = "PENDING";
+
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @JsonIgnore
     private List<PriceHistory> priceHistory = new ArrayList<>();

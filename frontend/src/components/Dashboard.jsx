@@ -56,7 +56,13 @@ export default function Dashboard() {
     const { data: products = [], isLoading: isLoadingProducts, isError: isFetchError } = useQuery({
         queryKey: ['products'],
         queryFn: getProducts,
-        staleTime: 1000 * 60 * 5, // 5 minutes
+        staleTime: 1000 * 30, // 30 seconds (faster refresh for pending products)
+        refetchInterval: (query) => {
+            // Auto-refresh every 3 seconds if there are pending products
+            const data = query.state.data || [];
+            const hasPending = data.some(p => p.status === 'PENDING');
+            return hasPending ? 3000 : false;
+        },
     });
 
     // Update last update time when products are fetched
@@ -71,7 +77,12 @@ export default function Dashboard() {
     const { mutate: addProduct, isPending: isAddingProduct } = useMutation({
         mutationFn: apiAddProduct,
         onSuccess: (newProduct) => {
-            addToast(`✅ "${newProduct.name}" adicionado com sucesso!`, 'success');
+            // Product is added instantly with PENDING status
+            if (newProduct.status === 'PENDING') {
+                addToast(`⏳ Produto adicionado! Obtendo preço...`, 'info');
+            } else {
+                addToast(`✅ "${newProduct.name}" adicionado com sucesso!`, 'success');
+            }
             queryClient.invalidateQueries({ queryKey: ['products'] });
         },
         onError: (error) => {
