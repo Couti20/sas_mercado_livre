@@ -239,12 +239,16 @@ class Scraper:
             print("[DEBUG] 🔄 Tentando extração via JavaScript...", flush=True)
             title = None
             price = None
+            original_price = None
+            discount_percent = None
             
             try:
                 js_data = await page.evaluate("""
                     () => {
                         let title = null;
                         let price = null;
+                        let originalPrice = null;
+                        let discountPercent = null;
                         let debug = {
                             jsonLdCount: 0,
                             h1Count: 0,
@@ -300,6 +304,61 @@ class Scraper:
                             if (h1) title = h1.innerText?.trim();
                         }
                         
+                        // === CAPTURAR PREÇO ORIGINAL (riscado) E DESCONTO ===
+                        // Seletores para preço original (antes do desconto)
+                        const originalPriceSelectors = [
+                            '.ui-pdp-price__original-value .andes-money-amount__fraction',
+                            '.ui-pdp-price__second-line--crossed .andes-money-amount__fraction',
+                            's.andes-money-amount .andes-money-amount__fraction',
+                            '[class*="crossed"] .andes-money-amount__fraction',
+                            '.ui-pdp-price__original-value',
+                            '.andes-money-amount--previous .andes-money-amount__fraction'
+                        ];
+                        
+                        for (const sel of originalPriceSelectors) {
+                            const el = document.querySelector(sel);
+                            if (el) {
+                                const text = el.innerText || el.textContent;
+                                const cleaned = text.replace(/[^\d.,]/g, '');
+                                if (cleaned) {
+                                    let val;
+                                    if (cleaned.includes(',')) {
+                                        const parts = cleaned.split(',');
+                                        const intPart = parts[0].replace(/\./g, '');
+                                        const decPart = parts[1] || '00';
+                                        val = parseFloat(intPart + '.' + decPart);
+                                    } else {
+                                        val = parseFloat(cleaned.replace(/\./g, ''));
+                                    }
+                                    if (val > 0 && val < 1000000) {
+                                        originalPrice = val;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // Seletores para percentual de desconto
+                        const discountSelectors = [
+                            '.ui-pdp-price__second-line__label',
+                            '.andes-money-amount__discount',
+                            '[class*="discount"]',
+                            '.ui-pdp-price__subtitles .ui-pdp-price__subtitle'
+                        ];
+                        
+                        for (const sel of discountSelectors) {
+                            const el = document.querySelector(sel);
+                            if (el) {
+                                const text = el.innerText || el.textContent;
+                                const match = text.match(/(\d+)\s*%\s*OFF/i);
+                                if (match) {
+                                    discountPercent = parseInt(match[1]);
+                                    break;
+                                }
+                            }
+                        }
+                        // === FIM CAPTURA DESCONTO ===
+                        
                         if (!price) {
                             const priceSelectors = [
                                 '.ui-pdp-price__second-line .andes-money-amount',
@@ -342,6 +401,11 @@ class Scraper:
                             }
                         }
                         
+                        // Se temos preço original e preço atual, calcular desconto se não encontrado
+                        if (originalPrice && price && !discountPercent) {
+                            discountPercent = Math.round((1 - price / originalPrice) * 100);
+                        }
+                        
                         if (!price) {
                             const ariaPrice = document.querySelector('[aria-label*="reais"]');
                             if (ariaPrice) {
@@ -353,7 +417,7 @@ class Scraper:
                             }
                         }
                         
-                        return { title, price, debug };
+                        return { title, price, originalPrice, discountPercent, debug };
                     }
                 """)
                 
@@ -366,7 +430,13 @@ class Scraper:
                         print(f"[DEBUG] 📝 Título: {title[:50]}...", flush=True)
                     if js_data.get('price'):
                         price = js_data['price']
-                        print(f"[DEBUG] 💰 Preço: R$ {price:.2f}", flush=True)
+                        print(f"[DEBUG] 💰 Preço atual: R$ {price:.2f}", flush=True)
+                    if js_data.get('originalPrice'):
+                        original_price = js_data['originalPrice']
+                        print(f"[DEBUG] 💵 Preço original: R$ {original_price:.2f}", flush=True)
+                    if js_data.get('discountPercent'):
+                        discount_percent = js_data['discountPercent']
+                        print(f"[DEBUG] 🏷️ Desconto: {discount_percent}% OFF", flush=True)
             except Exception as e:
                 print(f"[DEBUG] JS extraction failed: {e}", flush=True)
             
@@ -454,9 +524,20 @@ class Scraper:
                 ScraperStats.log_failure()
                 return None
 
-            print(f"[OK] ✅ {title[:40]}... - R$ {price:.2f}", flush=True)
+            # Log de sucesso com informações de desconto
+            if discount_percent and discount_percent > 0:
+                print(f"[OK] ✅ {title[:40]}... - R$ {price:.2f} (🏷️ {discount_percent}% OFF, era R$ {original_price:.2f})", flush=True)
+            else:
+                print(f"[OK] ✅ {title[:40]}... - R$ {price:.2f}", flush=True)
+            
             ScraperStats.log_success()
-            return {"title": title, "price": price, "imageUrl": image_url}
+            return {
+                "title": title, 
+                "price": price, 
+                "imageUrl": image_url,
+                "originalPrice": original_price,
+                "discountPercent": discount_percent
+            }
 
         except PlaywrightTimeout:
             print(f"[WARN] [Tentativa {attempt_num + 1}] Timeout ao processar página: {url}", flush=True)

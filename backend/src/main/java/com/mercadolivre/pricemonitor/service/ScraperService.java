@@ -135,6 +135,17 @@ public class ScraperService {
                     Object priceObj = productData.get("price");
                     Double price = priceObj != null ? Double.valueOf(priceObj.toString()) : null;
                     
+                    // Buscar preço original (promoção)
+                    Double originalPrice = null;
+                    Integer discountPercent = null;
+                    Object originalPriceObj = productData.get("original_price");
+                    if (originalPriceObj != null) {
+                        originalPrice = Double.valueOf(originalPriceObj.toString());
+                        if (price != null && originalPrice > price) {
+                            discountPercent = (int) Math.round((1 - (price / originalPrice)) * 100);
+                        }
+                    }
+                    
                     // Buscar imagem
                     String imageUrl = null;
                     Object pictures = productData.get("pictures");
@@ -149,10 +160,15 @@ public class ScraperService {
                     }
                     
                     long duration = System.currentTimeMillis() - startTime;
-                    log.info("✅ ML API success: title='{}' | price=R${} | duration={}ms",
-                            title, price, duration);
+                    if (discountPercent != null && discountPercent > 0) {
+                        log.info("✅ ML API success: title='{}' | price=R${} (🏷️ {}% OFF) | duration={}ms",
+                                title, price, discountPercent, duration);
+                    } else {
+                        log.info("✅ ML API success: title='{}' | price=R${} | duration={}ms",
+                                title, price, duration);
+                    }
                     
-                    return new ScrapeResponse(title, price, imageUrl, null);
+                    return new ScrapeResponse(title, price, imageUrl, originalPrice, discountPercent, null);
                 }
             } catch (Exception e) {
                 log.error("❌ ML API error: {} - Falling back to scraper", e.getMessage());

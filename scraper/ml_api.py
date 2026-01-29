@@ -187,14 +187,29 @@ async def fetch_product_from_api(item_id: str, retry: bool = True) -> Optional[D
         data = response.json()
         title = data.get("title", "")
         price = data.get("price", 0)
+        original_price = data.get("original_price")  # Preço original (sem desconto)
+        
+        # Calcular desconto se tiver preço original
+        discount_percent = None
+        if original_price and price and original_price > price:
+            discount_percent = round((1 - price / original_price) * 100)
         
         pictures = data.get("pictures", [])
         image_url = pictures[0].get("secure_url") if pictures else data.get("thumbnail")
 
         if title and price:
             MLApiStats.record_success()
-            print(f"[ML_API] ✅ Sucesso: {title[:50]}... - R$ {price}", flush=True)
-            return {"title": title, "price": float(price), "imageUrl": image_url}
+            if discount_percent:
+                print(f"[ML_API] ✅ Sucesso: {title[:50]}... - R$ {price} (🏷️ {discount_percent}% OFF)", flush=True)
+            else:
+                print(f"[ML_API] ✅ Sucesso: {title[:50]}... - R$ {price}", flush=True)
+            return {
+                "title": title, 
+                "price": float(price), 
+                "imageUrl": image_url,
+                "originalPrice": float(original_price) if original_price else None,
+                "discountPercent": discount_percent
+            }
         
         MLApiStats.record_error()
         return None
@@ -254,6 +269,12 @@ async def fetch_product_public(item_id: str) -> Optional[Dict[str, Any]]:
         data = response.json()
         title = data.get("title", "")
         price = data.get("price", 0)
+        original_price = data.get("original_price")  # Preço original (sem desconto)
+        
+        # Calcular desconto se tiver preço original
+        discount_percent = None
+        if original_price and price and original_price > price:
+            discount_percent = round((1 - price / original_price) * 100)
         
         # Buscar imagem
         pictures = data.get("pictures", [])
@@ -265,8 +286,17 @@ async def fetch_product_public(item_id: str) -> Optional[Dict[str, Any]]:
         
         if title and price:
             MLApiStats.record_success()
-            print(f"[ML_API_PUBLIC] ✅ Sucesso (sem auth): {title[:50]}... - R$ {price}", flush=True)
-            return {"title": title, "price": float(price), "imageUrl": image_url}
+            if discount_percent:
+                print(f"[ML_API_PUBLIC] ✅ Sucesso (sem auth): {title[:50]}... - R$ {price} (🏷️ {discount_percent}% OFF)", flush=True)
+            else:
+                print(f"[ML_API_PUBLIC] ✅ Sucesso (sem auth): {title[:50]}... - R$ {price}", flush=True)
+            return {
+                "title": title, 
+                "price": float(price), 
+                "imageUrl": image_url,
+                "originalPrice": float(original_price) if original_price else None,
+                "discountPercent": discount_percent
+            }
         
         MLApiStats.record_error()
         print(f"[ML_API_PUBLIC] ⚠️ Dados incompletos: title={bool(title)}, price={bool(price)}", flush=True)

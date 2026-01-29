@@ -156,6 +156,44 @@ def extract_product_data(html: str) -> Optional[Dict[str, Any]]:
             except:
                 pass
     
+    # ===== PREÇO ORIGINAL (desconto) =====
+    original_price = None
+    discount_percent = None
+    
+    original_price_selectors = [
+        '.ui-pdp-price__original-value .andes-money-amount__fraction',
+        '.ui-pdp-price__second-line--crossed .andes-money-amount__fraction',
+        's.andes-money-amount .andes-money-amount__fraction',
+        '[class*="crossed"] .andes-money-amount__fraction',
+    ]
+    
+    for selector in original_price_selectors:
+        elem = soup.select_one(selector)
+        if elem:
+            original_price = normalize_price(elem.get_text(strip=True))
+            if original_price:
+                break
+    
+    # Buscar desconto direto do HTML
+    discount_selectors = [
+        '.ui-pdp-price__second-line__label',
+        '.andes-money-amount__discount',
+        '[class*="discount"]',
+    ]
+    
+    for selector in discount_selectors:
+        elem = soup.select_one(selector)
+        if elem:
+            text = elem.get_text(strip=True)
+            match = re.search(r'(\d+)\s*%\s*OFF', text, re.IGNORECASE)
+            if match:
+                discount_percent = int(match.group(1))
+                break
+    
+    # Calcular desconto se temos preço original mas não encontramos o %
+    if original_price and price and not discount_percent:
+        discount_percent = round((1 - price / original_price) * 100)
+    
     # ===== IMAGEM =====
     # Múltiplos seletores para encontrar a imagem
     image_selectors = [
@@ -186,12 +224,17 @@ def extract_product_data(html: str) -> Optional[Dict[str, Any]]:
         print(f"[SCRAPERAPI] ⚠️ Dados incompletos: title={bool(title)}, price={bool(price)}", flush=True)
         return None
     
-    print(f"[SCRAPERAPI] ✅ Extraído: {title[:50]}... - R$ {price}", flush=True)
+    if discount_percent and discount_percent > 0:
+        print(f"[SCRAPERAPI] ✅ Extraído: {title[:50]}... - R$ {price} (🏷️ {discount_percent}% OFF)", flush=True)
+    else:
+        print(f"[SCRAPERAPI] ✅ Extraído: {title[:50]}... - R$ {price}", flush=True)
     
     return {
         "title": title,
         "price": price,
-        "imageUrl": image_url
+        "imageUrl": image_url,
+        "originalPrice": original_price,
+        "discountPercent": discount_percent
     }
 
 

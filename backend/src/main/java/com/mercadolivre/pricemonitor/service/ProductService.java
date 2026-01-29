@@ -227,6 +227,8 @@ public class ProductService {
             product.setLastPrice(oldPrice);
         }
         product.setCurrentPrice(newPrice);
+        product.setOriginalPrice(scrapeData.getOriginalPrice());
+        product.setDiscountPercent(scrapeData.getDiscountPercent());
         product.setLastCheckedAt(LocalDateTime.now());
         product.setName(scrapeData.getTitle());
         if (scrapeData.getImageUrl() != null) {
@@ -259,8 +261,13 @@ public class ProductService {
             }
         }
 
-        log.info("✅ Verificado '{}': R$ {} ({})", 
-            product.getName(), newPrice, priceChanged ? "MUDOU" : "igual");
+        // Log com informação de desconto se houver
+        String discountInfo = "";
+        if (product.getDiscountPercent() != null && product.getDiscountPercent() > 0) {
+            discountInfo = String.format(" (🏷️ %d%% OFF)", product.getDiscountPercent());
+        }
+        log.info("✅ Verificado '{}': R$ {}{} ({})", 
+            product.getName(), newPrice, discountInfo, priceChanged ? "MUDOU" : "igual");
         
         // Handle notifications (só notifica se mudou)
         if (priceChanged) {

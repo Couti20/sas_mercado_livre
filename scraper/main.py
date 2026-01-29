@@ -114,6 +114,8 @@ class ScrapeResponse(BaseModel):
     title: str
     price: float
     imageUrl: Optional[str] = None
+    originalPrice: Optional[float] = None
+    discountPercent: Optional[int] = None
 
 class ErrorResponse(BaseModel):
     error: str

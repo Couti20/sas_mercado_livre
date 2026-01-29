@@ -48,6 +48,20 @@ public class Product {
 
     @Column(name = "last_price")
     private Double lastPrice;
+    
+    /**
+     * Original price before discount (preço riscado).
+     * If null, the product has no active promotion.
+     */
+    @Column(name = "original_price")
+    private Double originalPrice;
+    
+    /**
+     * Discount percentage (e.g., 15 for 15% OFF).
+     * If null, the product has no active promotion.
+     */
+    @Column(name = "discount_percent")
+    private Integer discountPercent;
 
     @Column(name = "last_checked_at")
     private LocalDateTime lastCheckedAt;

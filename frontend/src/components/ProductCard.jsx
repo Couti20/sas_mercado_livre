@@ -149,6 +149,13 @@ export default function ProductCard({ product, onDelete, onShowHistory, onUpdate
               📈 +{Math.abs(priceChange)}%
             </div>
           )}
+          
+          {/* Promotional Discount Badge - shows if product has active promotion and no price change */}
+          {!isPriceDropped && !isPriceUp && product.discountPercent > 0 && (
+            <div className="absolute top-3 left-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white px-3 py-1.5 rounded-full text-xs font-bold shadow-lg flex items-center gap-1 animate-pulse">
+              🏷️ {product.discountPercent}% OFF
+            </div>
+          )}
 
           {/* Delete Button - positioned on image */}
           <button
@@ -204,6 +211,20 @@ export default function ProductCard({ product, onDelete, onShowHistory, onUpdate
                 }`}>
                   R$ {product.currentPrice?.toFixed(2) || '0.00'}
                 </div>
+                
+                {/* Promotional Original Price (crossed out) */}
+                {product.originalPrice && product.originalPrice > product.currentPrice && (
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-xs text-slate-400 line-through">
+                      R$ {product.originalPrice.toFixed(2)}
+                    </span>
+                    {product.discountPercent > 0 && (
+                      <span className="text-xs font-bold text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded">
+                        -{product.discountPercent}%
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
               
               {/* Price Change Indicator */}

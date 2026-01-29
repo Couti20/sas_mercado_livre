@@ -56,6 +56,8 @@ public class AsyncScrapingService {
             product.setName(scrapeData.getTitle());
             product.setImageUrl(scrapeData.getImageUrl());
             product.setCurrentPrice(scrapeData.getPrice());
+            product.setOriginalPrice(scrapeData.getOriginalPrice());
+            product.setDiscountPercent(scrapeData.getDiscountPercent());
             product.setLastCheckedAt(LocalDateTime.now());
             product.setStatus("ACTIVE");
             productRepository.save(product);
@@ -64,8 +66,15 @@ public class AsyncScrapingService {
             PriceHistory history = new PriceHistory(product, scrapeData.getPrice());
             priceHistoryRepository.save(history);
 
-            log.info("✅ [ASYNC] Background scrape completed for product {}: '{}' at R$ {}", 
-                productId, product.getName(), product.getCurrentPrice());
+            // Log com informação de desconto se houver
+            if (scrapeData.getDiscountPercent() != null && scrapeData.getDiscountPercent() > 0) {
+                log.info("✅ [ASYNC] Background scrape completed for product {}: '{}' at R$ {} (🏷️ {}% OFF, original: R$ {})", 
+                    productId, product.getName(), product.getCurrentPrice(), 
+                    scrapeData.getDiscountPercent(), scrapeData.getOriginalPrice());
+            } else {
+                log.info("✅ [ASYNC] Background scrape completed for product {}: '{}' at R$ {}", 
+                    productId, product.getName(), product.getCurrentPrice());
+            }
 
         } catch (Exception e) {
             log.error("❌ [ASYNC] Background scrape error for product {}: {}", productId, e.getMessage());
