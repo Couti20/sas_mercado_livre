@@ -199,32 +199,38 @@ export default function ProductCard({ product, onDelete, onShowHistory, onUpdate
             {/* Current Price - Main */}
             <div className="flex items-baseline justify-between">
               <div>
-                {/* Preço Atual (sempre mostra) */}
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                  Preço Atual
-                </span>
-                <div className={`text-2xl font-bold ${
-                  isPriceDropped 
-                    ? 'text-emerald-600' 
-                    : isPriceUp 
-                      ? 'text-red-600'
-                      : 'text-slate-800'
-                }`}>
-                  R$ {product.currentPrice?.toFixed(2) || '0.00'}
-                </div>
-                
-                {/* Se tem desconto, mostra preço com desconto calculado embaixo */}
-                {product.discountPercent > 0 && (
-                  <div className="mt-2 flex items-center gap-2 bg-emerald-50 rounded-lg p-2">
-                    <span className="text-sm text-slate-600">Com desconto:</span>
-                    <span className="text-lg font-bold text-emerald-600">
-                      R$ {(product.currentPrice * (1 - product.discountPercent / 100)).toFixed(2)}
+                {/* Se tem desconto, mostra preço original riscado primeiro */}
+                {product.discountPercent > 0 && product.originalPrice && (
+                  <div className="mb-1">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                      De: 
                     </span>
-                    <span className="text-xs font-bold text-white bg-emerald-500 px-2 py-1 rounded-full">
-                      🏷️ {product.discountPercent}% OFF
+                    <span className="text-sm text-slate-400 line-through ml-1">
+                      R$ {product.originalPrice?.toFixed(2)}
                     </span>
                   </div>
                 )}
+                
+                {/* Preço Atual (já com desconto se houver promoção) */}
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                  {product.discountPercent > 0 ? 'Por:' : 'Preço Atual'}
+                </span>
+                <div className="flex items-center gap-2">
+                  <span className={`text-2xl font-bold ${
+                    isPriceDropped 
+                      ? 'text-emerald-600' 
+                      : isPriceUp 
+                        ? 'text-red-600'
+                        : 'text-slate-800'
+                  }`}>
+                    R$ {product.currentPrice?.toFixed(2) || '0.00'}
+                  </span>
+                  {product.discountPercent > 0 && (
+                    <span className="text-xs font-bold text-white bg-emerald-500 px-2 py-1 rounded-full">
+                      🏷️ {product.discountPercent}% OFF
+                    </span>
+                  )}
+                </div>
               </div>
               
               {/* Price Change Indicator */}
