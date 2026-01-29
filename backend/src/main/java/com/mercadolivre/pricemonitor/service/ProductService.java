@@ -10,7 +10,6 @@ import com.mercadolivre.pricemonitor.repository.ProductRepository;
 import com.mercadolivre.pricemonitor.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,6 +34,7 @@ public class ProductService {
     private final BrevoEmailService brevoEmailService; // Use Brevo API (works on Railway)
     private final NotificationService notificationService;
     private final TelegramService telegramService;
+    private final AsyncScrapingService asyncScrapingService; // For background scraping
 
     public List<Product> getProductsByUserId(Long userId) {
         log.debug("Fetching products for userId: {}", userId);
@@ -168,8 +168,8 @@ public class ProductService {
         Product saved = productRepository.save(product);
         log.info("⏳ Product added with PENDING status for userId {}: {}", userId, url);
 
-        // Disparar scraping em background (não bloqueia!)
-        scrapeProductInBackground(saved.getId(), url);
+        // Disparar scraping em background via serviço separado (garante que @Async funciona!)
+        asyncScrapingService.scrapeProductInBackground(saved.getId(), url);
 
         return saved;
     }
@@ -194,60 +194,6 @@ public class ProductService {
             // Ignore
         }
         return "Carregando produto...";
-    }
-
-    /**
-     * Scrape product data in background thread (non-blocking).
-     */
-    @Async
-    public void scrapeProductInBackground(Long productId, String url) {
-        try {
-            log.info("🔄 Starting background scrape for product ID {}: {}", productId, url);
-            
-            ScrapeResponse scrapeData = scraperService.fetchProductData(url).get();
-
-            // Buscar produto do banco (pode ter sido deletado enquanto aguardava)
-            Product product = productRepository.findById(productId).orElse(null);
-            if (product == null) {
-                log.warn("⚠️ Product {} was deleted while scraping", productId);
-                return;
-            }
-
-            if (scrapeData == null || !scrapeData.isValid()) {
-                log.error("❌ Background scrape failed for product {}: invalid data", productId);
-                product.setStatus("ERROR");
-                product.setName("Erro ao carregar - " + product.getName());
-                productRepository.save(product);
-                return;
-            }
-
-            // Atualizar com dados do scraper
-            product.setName(scrapeData.getTitle());
-            product.setImageUrl(scrapeData.getImageUrl());
-            product.setCurrentPrice(scrapeData.getPrice());
-            product.setLastCheckedAt(LocalDateTime.now());
-            product.setStatus("ACTIVE");
-            productRepository.save(product);
-
-            // Salvar primeiro registro no histórico
-            PriceHistory history = new PriceHistory(product, scrapeData.getPrice());
-            priceHistoryRepository.save(history);
-
-            log.info("✅ Background scrape completed for product {}: '{}' at R$ {}", 
-                productId, product.getName(), product.getCurrentPrice());
-
-        } catch (Exception e) {
-            log.error("❌ Background scrape error for product {}: {}", productId, e.getMessage());
-            try {
-                Product product = productRepository.findById(productId).orElse(null);
-                if (product != null) {
-                    product.setStatus("ERROR");
-                    productRepository.save(product);
-                }
-            } catch (Exception ex) {
-                log.error("Failed to update product status: {}", ex.getMessage());
-            }
-        }
     }
 
     /**
