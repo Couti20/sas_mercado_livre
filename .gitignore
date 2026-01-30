@@ -14,15 +14,12 @@ build/
 .vscode/
 *.iml
 
-# Environment
+# Environment variables (NEVER commit!)
 .env
 .env.local
 *.env.local
 backend/.env
 frontend/.env.local
-
-# Local secrets file (do not commit)
-kkkkkkk
 
 # Application secrets (local development)
 **/application-local.properties
@@ -30,10 +27,14 @@ kkkkkkk
 # Database
 *.db
 data/
+# SQL: manter schema versionado; ignorar dumps/migrations locais
+banco_dados.sql
+migration_*.sql
 
 # Logs
 *.log
 logs/
+hs_err_pid*.log
 
 # OS
 .DS_Store
@@ -42,12 +43,18 @@ Thumbs.db
 # Docker
 docker-compose.override.yml
 
-# Windows reserved names
-nul
-NUL
+# Temporary files
+*.tmp
+*.temp
+*.bak
 
-# Java crash logs
-hs_err_pid*.log
+# Playwright
+browsers/
+playwright-report/
+
+# Cache
+.cache/
+*.cache
 replay_pid*.log
 
 # Debug files
